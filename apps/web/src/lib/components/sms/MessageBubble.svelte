@@ -1,10 +1,23 @@
 <script lang="ts">
   import type { SmsMessage } from '$lib/stores/messages';
+  import { smsStatusStore, type SmsDeliveryStatus } from '$lib/stores/smsStatus';
   import { formatTime } from '$lib/utils/formatters';
+  import MessageStatus from './MessageStatus.svelte';
 
   export let message: SmsMessage;
 
   $: isSent = message.type === 'sent' || message.type === 'outbox';
+
+  // Get status from store (for recently sent messages)
+  let status: SmsDeliveryStatus | undefined;
+
+  // Subscribe to status changes
+  const unsubscribe = smsStatusStore.subscribe((map) => {
+    const entry = map.get(message.id);
+    if (entry) {
+      status = entry.status;
+    }
+  });
 </script>
 
 <div class="flex {isSent ? 'justify-end' : 'justify-start'}">
@@ -14,18 +27,12 @@
       : 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md'}"
   >
     <p class="whitespace-pre-wrap break-words">{message.body}</p>
-    <div class="flex items-center justify-end gap-1 mt-1">
+    <div class="flex items-center justify-end gap-0.5 mt-1">
       <span class="text-xs {isSent ? 'text-primary-100' : 'text-gray-400'}">
         {formatTime(message.date)}
       </span>
       {#if isSent}
-        <svg class="w-4 h-4 {message.type === 'sent' ? 'text-primary-100' : 'text-primary-200'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {#if message.type === 'sent'}
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          {:else}
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          {/if}
-        </svg>
+        <MessageStatus {status} type={message.type} light={true} />
       {/if}
     </div>
   </div>

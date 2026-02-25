@@ -1,10 +1,21 @@
 <script lang="ts">
   import { threadsStore, messagesStore, type SmsThread, type SmsMessage } from '$lib/stores/messages';
   import { chatLayoutStore, modernThemeStore } from '$lib/stores/chatLayout';
+  import { smsStatusStore, type SmsDeliveryStatus } from '$lib/stores/smsStatus';
   import { formatRelativeTime, formatPhoneNumber, formatTime, truncate } from '$lib/utils/formatters';
   import { socketStore } from '$lib/stores/socket';
   import { toast } from '$lib/stores/toast';
   import { onMount } from 'svelte';
+
+  // Get status for a message
+  function getStatus(messageId: string): SmsDeliveryStatus | undefined {
+    let status: SmsDeliveryStatus | undefined;
+    smsStatusStore.subscribe((map) => {
+      const entry = map.get(messageId);
+      if (entry) status = entry.status;
+    })();
+    return status;
+  }
 
   let loading = true;
   let selectedThread: SmsThread | null = null;
@@ -187,9 +198,34 @@
       <!-- Messages -->
       <div bind:this={messagesContainer} class="messages-container flex-1 overflow-y-auto p-5 flex flex-col gap-4">
         {#each $messagesStore as message (message.id)}
+          {@const status = getStatus(message.id)}
           <div class="message {isSent(message) ? 'sent' : 'received'}">
             <p class="whitespace-pre-wrap break-words">{message.body}</p>
-            <div class="message-time">{formatTime(message.date)}</div>
+            <div class="message-meta">
+              <span class="message-time">{formatTime(message.date)}</span>
+              {#if isSent(message)}
+                <span class="message-status" title={status === 'delivered' ? 'Livre' : status === 'sent' ? 'Envoye' : status === 'failed' ? 'Echec' : 'En attente'}>
+                  {#if status === 'failed'}
+                    <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  {:else if status === 'delivered'}
+                    <svg class="w-4 h-4 status-delivered" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2 13l4 4L16 7" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 13l4 4L22 7" />
+                    </svg>
+                  {:else if status === 'sending' || message.type === 'outbox'}
+                    <svg class="w-3.5 h-3.5 status-sending" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  {:else}
+                    <svg class="w-4 h-4 status-sent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  {/if}
+                </span>
+              {/if}
+            </div>
           </div>
         {/each}
 
@@ -326,11 +362,29 @@
     border-right-color: #eeeeee;
     border-top: 0;
   }
+  .theme-light .message-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 6px;
+  }
   .theme-light .message-time {
     font-size: 0.7em;
-    margin-top: 6px;
     opacity: 0.6;
-    text-align: right;
+  }
+  .theme-light .message-status {
+    display: flex;
+    align-items: center;
+  }
+  .theme-light .status-sent {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .theme-light .status-delivered {
+    color: #3498db;
+  }
+  .theme-light .status-sending {
+    color: rgba(0, 0, 0, 0.3);
   }
 
   .theme-light .chat-footer {
@@ -427,11 +481,29 @@
     border-right-color: #f5f5f5;
     border-top: 0;
   }
+  .theme-dark-blue .message-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 6px;
+  }
   .theme-dark-blue .message-time {
     font-size: 0.7em;
-    margin-top: 6px;
     opacity: 0.6;
-    text-align: right;
+  }
+  .theme-dark-blue .message-status {
+    display: flex;
+    align-items: center;
+  }
+  .theme-dark-blue .status-sent {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .theme-dark-blue .status-delivered {
+    color: #3498db;
+  }
+  .theme-dark-blue .status-sending {
+    color: rgba(0, 0, 0, 0.3);
   }
 
   .theme-dark-blue .chat-footer {
