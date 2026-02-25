@@ -1,0 +1,184 @@
+================================================================================
+                    GUIDE BUILD APK - LOCALMIGHTY
+================================================================================
+
+PREREQUIS
+---------
+Android Studio n'est pas installe. Voici comment proceder :
+
+================================================================================
+                         OPTION 1 : ANDROID STUDIO
+================================================================================
+
+1. TELECHARGER ANDROID STUDIO
+   --------------------------
+   URL : https://developer.android.com/studio
+
+   - Clique "Download Android Studio"
+   - Accepte les termes
+   - Lance l'installateur
+
+2. INSTALLER ANDROID STUDIO
+   -------------------------
+   - Choisis "Standard" installation
+   - Laisse les composants par defaut (SDK, Emulator, etc.)
+   - L'installation prend ~10-15 min (telecharge SDK ~2-3 GB)
+
+3. OUVRIR LE PROJET
+   -----------------
+   - Lance Android Studio
+   - File > Open
+   - Selectionne : C:\Users\AJB_ELITE\Desktop\LocalMighty_Ap\apps\android
+   - Attends la synchronisation Gradle (premiere fois = longue)
+
+4. BUILD L'APK
+   -----------
+   - Menu : Build > Build Bundle(s) / APK(s) > Build APK(s)
+   - Attends la compilation
+   - Clique "locate" dans la notification pour trouver l'APK
+
+   L'APK sera ici :
+   apps/android/app/build/outputs/apk/debug/app-debug.apk
+
+================================================================================
+                         OPTION 2 : LIGNE DE COMMANDE
+================================================================================
+
+Si tu preferes sans Android Studio :
+
+1. INSTALLER JAVA JDK 17
+   ----------------------
+   URL : https://adoptium.net/temurin/releases/?version=17
+
+   - Telecharge "Windows x64 JDK" (.msi)
+   - Installe avec les options par defaut
+   - Redemarrer le terminal apres installation
+
+2. CONFIGURER JAVA_HOME
+   ---------------------
+   Dans PowerShell (admin) :
+
+   [System.Environment]::SetEnvironmentVariable("JAVA_HOME",
+       "C:\Program Files\Eclipse Adoptium\jdk-17.x.x.x-hotspot", "Machine")
+
+   (Remplace x.x.x par la version installee)
+
+3. BUILD VIA TERMINAL
+   -------------------
+   cd C:\Users\AJB_ELITE\Desktop\LocalMighty_Ap\apps\android
+   .\gradlew.bat assembleDebug
+
+   L'APK sera dans : app\build\outputs\apk\debug\app-debug.apk
+
+================================================================================
+                    TRANSFERER L'APK SUR LE TELEPHONE
+================================================================================
+
+METHODE 1 : VIA CABLE USB + ADB
+-------------------------------
+1. Connecte le telephone en USB
+2. Active "USB Debugging" sur le telephone :
+   - Parametres > A propos > Tape 7x sur "Version HyperOS"
+   - Parametres > Options developpeur > Debogage USB > ON
+3. Installe ADB : https://developer.android.com/tools/releases/platform-tools
+4. Execute :
+   adb install app\build\outputs\apk\debug\app-debug.apk
+
+METHODE 2 : VIA WIFI (SIMPLE)
+-----------------------------
+1. Copie l'APK sur Google Drive / Telegram / WhatsApp
+2. Ouvre le fichier sur le telephone
+3. Installe (autorise "Sources inconnues" si demande)
+
+METHODE 3 : VIA SERVEUR LOCAL
+-----------------------------
+1. Place l'APK dans un dossier accessible
+2. Lance un serveur HTTP :
+   npx serve -s .
+3. Ouvre l'URL sur le telephone et telecharge
+
+================================================================================
+                    CONFIGURATION HYPEROS (CRITIQUE)
+================================================================================
+
+Apres installation, fais ces etapes DANS L'ORDRE :
+
+1. DEMARRAGE AUTOMATIQUE
+   ----------------------
+   Parametres > Apps > Gerer les applications > LocalMighty
+   > Demarrage automatique > ON
+
+2. PAS DE RESTRICTIONS BATTERIE
+   ----------------------------
+   Parametres > Apps > LocalMighty > Batterie > Aucune restriction
+
+   OU
+
+   Parametres > Batterie > Optimisation batterie > Toutes les apps
+   > LocalMighty > Ne pas optimiser
+
+3. VERROUILLER EN TACHES RECENTES
+   -------------------------------
+   - Ouvre LocalMighty
+   - Bouton carre (recent apps)
+   - Appui long sur l'icone LocalMighty > Verrouiller (cadenas)
+
+4. ACCES NOTIFICATIONS
+   --------------------
+   Parametres > Apps > Acces special > Acces aux notifications
+   > LocalMighty > ON
+
+5. AUTORISER PARAMETRES RESTREINTS
+   --------------------------------
+   Parametres > Apps > LocalMighty > 3 points (menu)
+   > Autoriser les parametres restreints
+
+   Puis :
+   Permissions > SMS > Autoriser
+   Permissions > Notifications > Autoriser
+
+6. REDEMARRER LE TELEPHONE
+   ------------------------
+   Parfois necessaire pour appliquer les changements batterie
+
+================================================================================
+                         TEST FINAL
+================================================================================
+
+1. Ouvre LocalMighty sur le telephone
+2. Entre l'IP : 172.16.102.20
+3. Entre le port : 3001
+4. Appuie "Connecter"
+5. Le serveur doit afficher "Phone connected"
+6. Mets l'ecran off pendant 5 min
+7. Envoie un SMS test depuis un autre telephone
+8. Verifie que le SMS apparait sur le dashboard PC
+
+Si le SMS n'apparait pas :
+- Le Foreground Service a ete tue par HyperOS
+- Re-verifie les etapes batterie
+- Reinstalle et recommence les tweaks
+
+================================================================================
+                         DEPANNAGE
+================================================================================
+
+PROBLEME : "Autoriser parametres restreints" invisible
+SOLUTION :
+- Lance l'app et refuse les permissions
+- Retourne dans Parametres > Apps > LocalMighty
+- L'option devrait apparaitre maintenant
+
+PROBLEME : Notification Listener grise
+SOLUTION :
+- Desinstalle et reinstalle l'app
+- Refais l'etape "Autoriser parametres restreints" EN PREMIER
+- Puis active Notification Listener
+
+PROBLEME : Service tue en background
+SOLUTION :
+- Installe "MIUI Hidden Settings" depuis APKMirror
+- Cherche "Battery optimization" dans les settings caches
+- Desactive pour LocalMighty
+
+================================================================================

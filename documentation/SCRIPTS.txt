@@ -1,0 +1,68 @@
+================================================================================
+                    LOCALMIGHTY - SCRIPTS DE DEMARRAGE
+================================================================================
+
+FICHIERS CREES
+--------------
+
+1. start-localmighty.bat
+   - Demarre le serveur Node.js (port 3001)
+   - Demarre le dashboard SvelteKit (port 5173)
+   - Ouvre automatiquement le navigateur sur http://localhost:5173
+   - Double-cliquez pour lancer manuellement
+
+2. start-localmighty-silent.vbs
+   - Version silencieuse (sans fenetre de commande)
+   - Utilise pour le demarrage automatique Windows
+
+3. stop-localmighty.bat
+   - Arrete tous les serveurs LocalMighty
+   - Double-cliquez pour arreter l'application
+
+================================================================================
+                         DEMARRAGE AUTOMATIQUE
+================================================================================
+
+Le script a ete ajoute au demarrage de Windows :
+C:\Users\AJB_ELITE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\LocalMighty.vbs
+
+Au prochain demarrage du PC :
+1. LocalMighty se lancera automatiquement
+2. Le navigateur s'ouvrira sur http://localhost:5173
+3. Le telephone se reconnectera automatiquement (si sur le meme Wi-Fi)
+
+================================================================================
+                         COMMANDES MANUELLES
+================================================================================
+
+DEMARRER :
+- Double-clic sur start-localmighty.bat
+- Ou executer : pnpm dev (dans le dossier du projet)
+
+ARRETER :
+- Double-clic sur stop-localmighty.bat
+- Ou fermer les fenetres de terminal
+
+DESACTIVER LE DEMARRAGE AUTOMATIQUE :
+1. Appuyer Win + R
+2. Taper : shell:startup
+3. Supprimer le fichier LocalMighty.vbs
+
+================================================================================
+                              DEPANNAGE
+================================================================================
+
+SI LE SERVEUR NE DEMARRE PAS :
+1. Verifiez que Node.js est installe
+2. Verifiez que pnpm est dans le PATH
+3. Executez "pnpm install" dans le dossier du projet
+
+SI LE NAVIGATEUR NE S'OUVRE PAS :
+- Ouvrez manuellement http://localhost:5173
+
+SI LE TELEPHONE NE SE CONNECTE PAS :
+1. Verifiez que vous etes sur le meme reseau Wi-Fi
+2. Verifiez l'IP du serveur (peut changer)
+3. Ouvrez l'app Android et reconnectez
+
+================================================================================

@@ -15,6 +15,7 @@ export const SOCKET_EVENTS = {
 
   // Server -> Phone
   SEND_SMS: 'send_sms',
+  SEND_BULK_SMS: 'send_bulk_sms',
   DISMISS_NOTIFICATION: 'dismiss_notif',
   REQUEST_SYNC: 'request_sync',
 

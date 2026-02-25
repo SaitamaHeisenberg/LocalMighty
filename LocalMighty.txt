@@ -1,0 +1,85 @@
+Cahier des Charges Proto V1 : "LocalMighty" (SMS + Notifications Sync Local)
+🎯 Objectif : Prototype fonctionnel en Wi-Fi local sur Redmi Note 13 Pro (Android 15/HyperOS) + PC. Valider sync SMS/notifs <5s, puis étendre.
+🏗 Architecture
+text[Android App – Listener SMS/Notifs]
+    ↓ (WebSocket/HTTP local)
+[Node.js Server sur PC – Stockage + API]
+    ↓ (WebSocket updates)
+[Dashboard Web – UI conversations/notifs]
+
+Réseau : Wi-Fi local only (découverte via mDNS/Bonjour ou IP fixe).
+Tech Stack : Android (Kotlin/Java), Node.js (Express + socket.io), Frontend (Svelte/React + Tailwind), DB (SQLite local).
+
+📱 Module Android App
+
+Rôle : Capture SMS/notifs/battery, push vers PC.
+Features V1 :
+SMS Sync : ContentObserver sur content://sms/ pour read live (reçus/sortants). Batch initial au connect.
+SMS Send : Si default SMS app → SmsManager. Sinon : Intent vers app SMS native (pré-rempli, user valide).
+Notifications Sync : NotificationListenerService (permission : BIND_NOTIFICATION_LISTENER_SERVICE). Push titre/texte/app.
+Battery/Status : BroadcastReceiver sur BatteryManager + ConnectivityManager. Heartbeat toutes 30s.
+
+Permissions : READ_SMS, INTERNET, FOREGROUND_SERVICE, NOTIFICATION_LISTENER. Activer "restricted settings" sur HyperOS.
+Connexion : Socket.io pour bi-directional (push notifs, receive send commands).
+Lib : Utilise klinker41/android-smsmms (GitHub open-source) pour SMS handling.
+
+🖥 Module Node.js Server
+
+Rôle : Relai + stockage.
+API :
+WS Events : 'new_sms', 'new_notif', 'battery_update', 'send_sms'.
+REST : GET /messages, GET /notifications.
+
+DB : SQLite – Tables : messages (id, thread_id, address, body, date, type), notifications (id, app, title, text, date).
+Sécurité : Token simple (UUID généré au pair), HTTPS self-signed si besoin.
+
+🌐 Module Dashboard Web
+
+UI :
+Onglet SMS : Liste convos (numéro, dernier msg), vue détail (histo, champ reply → send via server).
+Onglet Notifs : Liste chronologique (app, titre, texte), dismiss button (envoi dismiss à phone si possible).
+Statut : Battery %, connected/hors ligne.
+
+Tech : SvelteKit pour simplicité + real-time WS.
+
+🔁 Flux Exemples
+
+Notif Arrive : Phone capture → WS push server → WS update dashboard.
+Send SMS : Dashboard POST /send → server WS phone → phone SmsManager/Intent.
+Sync Initial : App connectée → batch SMS/notifs récents.
+
+🔒 Sécurité : Token auth, local only (bind 127.0.0.1 ou LAN IP). Pas d'Internet.
+📈 Évolutions : Ajouter photo sync (via SMB ou HTTP upload), scheduling (cron sur server), MMS (dur en 2026).
+🎯 Validation : SMS/notif apparaît sur PC <5s ; send depuis PC arrive ; stable background.
+🧠 Difficulté : Android 🟡 (permissions), Backend/Frontend 🟢.
+Steps pour Développer le Proto
+
+Setup Environ : Android Studio, Node.js. Test sur Redmi tôt (sideload APK).
+Inspirations Open-Source (fork ou copy code) :
+Sefirah (GitHub: shrimqy/Sefirah-Android) : Meilleure base ! Open-source, local Wi-Fi, inclut SMS send/reply from PC, notifs mirroring, battery, file sharing. Fork-le et adapte (Android + Windows app, mais tu peux remplacer Windows par Node dashboard).
+android-sms-gateway (GitHub: capcom6/android-sms-gateway) : Pour SMS gateway local, REST API sur phone, mais étends à notifs.
+KDE Connect (open-source) : Si Linux PC, pour inspi notifs/SMS via Wi-Fi.
+textbee (GitHub: vernu/textbee) : SMS gateway avec dashboard web, adaptable local.
+
+Code Starter :
+Android ContentObserver SMS (Kotlin) :Kotlinclass SmsObserver(private val handler: Handler) : ContentObserver(handler) {
+    override fun onChange(selfChange: Boolean, uri: Uri?) {
+        // Query new SMS: contentResolver.query(Uri.parse("content://sms/"), null, null, null, null)
+        // Extract: cursor.getString(cursor.getColumnIndexOrThrow("address")), body, date, type
+        // Push to Socket.io: socket.emit("new_sms", jsonObject)
+    }
+}
+// Register: contentResolver.registerContentObserver(Uri.parse("content://sms/"), true, smsObserver)
+Notification Listener :Kotlinclass NotifService : NotificationListenerService() {
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        // Extract: sbn?.packageName, sbn?.notification?.extras?.getString(Notification.EXTRA_TITLE), EXTRA_TEXT
+        // Socket.emit("new_notif", json)
+    }
+}
+Node.js Socket.io :JavaScriptconst io = require('socket.io')(server);
+io.on('connection', (socket) => {
+    socket.on('new_sms', (data) => { db.insert(data); io.emit('update_sms', data); });
+});
+
+Tests : Simule SMS via ADB (adb shell am broadcast -a android.provider.Telephony.SMS_RECEIVED), notifs via apps.
+Pièges 2026 : Background execution limité – utilise Foreground Service pour listener. Envoi SMS : teste default mode d'abord.
