@@ -29,7 +29,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Login** | root |
-| **Mot de passe** | LocalMighty2024 |
+| **Mot de passe** | 259983 |
 
 ### Depuis le PC (SSH)
 
