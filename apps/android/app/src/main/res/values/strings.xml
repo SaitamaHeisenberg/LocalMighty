@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LocalMighty</string>
+    <string name="notification_channel_name">LocalMighty Sync</string>
+    <string name="notification_channel_description">Affiche quand LocalMighty synchronise</string>
+</resources>
