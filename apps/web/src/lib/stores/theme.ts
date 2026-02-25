@@ -6,9 +6,9 @@ type Theme = 'light' | 'dark' | 'system';
 const STORAGE_KEY = 'localmighty_theme';
 
 function createThemeStore() {
-  // Get initial theme from localStorage or default to 'system'
+  // Get initial theme from localStorage or default to 'dark'
   const storedTheme = browser ? (localStorage.getItem(STORAGE_KEY) as Theme) : null;
-  const initialTheme: Theme = storedTheme || 'system';
+  const initialTheme: Theme = storedTheme || 'dark';
 
   const { subscribe, set, update } = writable<Theme>(initialTheme);
 
@@ -38,9 +38,10 @@ function createThemeStore() {
     // Listen for system theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       const currentTheme = localStorage.getItem(STORAGE_KEY) as Theme;
-      if (currentTheme === 'system' || !currentTheme) {
+      if (currentTheme === 'system') {
         applyTheme('system');
       }
+      // If no theme set, keep dark (don't follow system)
     });
   }
 
@@ -65,7 +66,7 @@ function createThemeStore() {
     },
     init: () => {
       if (browser) {
-        const theme = (localStorage.getItem(STORAGE_KEY) as Theme) || 'system';
+        const theme = (localStorage.getItem(STORAGE_KEY) as Theme) || 'dark';
         applyTheme(theme);
       }
     },

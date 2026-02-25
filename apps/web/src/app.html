@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
@@ -7,6 +7,19 @@
     <meta name="theme-color" content="#6366f1" />
     <meta name="description" content="Synchronisation SMS et notifications Android vers PC" />
     <title>LocalMighty</title>
+    <script>
+      (function() {
+        var theme = localStorage.getItem('localmighty_theme');
+        if (theme === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else if (theme === 'system') {
+          if (!window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+        // default ('dark' or null) keeps dark class
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
