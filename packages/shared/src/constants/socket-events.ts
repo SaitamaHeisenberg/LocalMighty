@@ -21,6 +21,7 @@ export const SOCKET_EVENTS = {
   DISMISS_NOTIFICATION: 'dismiss_notif',
   REQUEST_SYNC: 'request_sync',
   DIAL_NUMBER: 'dial_number',
+  REPLY_NOTIFICATION: 'reply_notif',
 
   // Server -> Web
   UPDATE_SMS: 'update_sms',

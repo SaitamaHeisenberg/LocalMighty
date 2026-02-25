@@ -12,6 +12,7 @@ export interface AppNotification {
   text: string;
   timestamp: number;
   dismissed: boolean;
+  canReply?: boolean;
 }
 
 function createNotificationsStore() {

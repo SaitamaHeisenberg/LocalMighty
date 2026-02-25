@@ -22,4 +22,5 @@ object SocketEvents {
     const val DISMISS_NOTIFICATION = "dismiss_notif"
     const val REQUEST_SYNC = "request_sync"
     const val DIAL_NUMBER = "dial_number"
+    const val REPLY_NOTIFICATION = "reply_notif"
 }

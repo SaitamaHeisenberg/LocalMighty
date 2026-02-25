@@ -80,6 +80,13 @@ class SyncForegroundService : Service() {
             Log.d(TAG, "[DIAL] Handler called with number: $number")
             dialNumber(number)
         }
+
+        // Handle reply notification requests
+        SocketManager.setReplyNotificationHandler { notificationId, message ->
+            Log.d(TAG, "[REPLY] Replying to notification: $notificationId")
+            val success = LocalMightyNotificationListener.replyToNotification(notificationId, message)
+            Log.d(TAG, "[REPLY] Result: $success")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

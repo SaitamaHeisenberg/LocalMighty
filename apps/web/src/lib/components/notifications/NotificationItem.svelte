@@ -16,6 +16,9 @@
     notification.appName.toLowerCase().includes('sms') ||
     notification.packageName?.includes('mms');
 
+  // Check if notification supports direct reply (WhatsApp, Telegram, etc.)
+  $: canReply = notification.canReply === true;
+
   // Try to extract phone number from title (usually contact name or number)
   $: phoneNumber = notification.title?.match(/[\d+\-\s()]{10,}/)?.[0]?.replace(/[\s\-()]/g, '') || '';
 
@@ -56,18 +59,29 @@
   }
 
   async function sendQuickReply() {
-    if (!replyMessage.trim() || !phoneNumber) return;
+    if (!replyMessage.trim()) return;
 
     sending = true;
     const socket = socketStore.getSocket();
 
     if (socket) {
-      socket.emit('send_sms', {
-        address: phoneNumber,
-        body: replyMessage.trim(),
-      });
+      // For SMS notifications with phone number, send SMS
+      if (isSmsNotification && phoneNumber) {
+        socket.emit('send_sms', {
+          address: phoneNumber,
+          body: replyMessage.trim(),
+        });
+        toast('SMS envoye', 'success');
+      }
+      // For other notifications with direct reply support
+      else if (canReply) {
+        socket.emit('reply_notif', {
+          notificationId: notification.id,
+          message: replyMessage.trim(),
+        });
+        toast('Reponse envoyee', 'success');
+      }
 
-      toast('Message envoye', 'success');
       replyMessage = '';
       showQuickReply = false;
       onDismiss();
@@ -88,6 +102,9 @@
       replyMessage = '';
     }
   }
+
+  // Can we reply to this notification?
+  $: showReplyButton = canReply || (isSmsNotification && phoneNumber);
 </script>
 
 <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
@@ -108,6 +125,11 @@
         <span class="text-xs text-gray-400">
           {formatRelativeTime(notification.timestamp)}
         </span>
+        {#if canReply}
+          <span class="text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">
+            Reponse directe
+          </span>
+        {/if}
       </div>
 
       {#if notification.title}
@@ -122,14 +144,14 @@
         </p>
       {/if}
 
-      <!-- Quick Reply for SMS -->
-      {#if showQuickReply && isSmsNotification}
+      <!-- Quick Reply -->
+      {#if showQuickReply && showReplyButton}
         <div class="mt-2 flex gap-2">
           <input
             type="text"
             bind:value={replyMessage}
             on:keydown={handleKeydown}
-            placeholder="Reponse rapide..."
+            placeholder={canReply ? `Repondre a ${notification.appName}...` : 'Reponse rapide...'}
             class="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600
                    bg-white dark:bg-gray-800 focus:outline-none focus:ring-2
                    focus:ring-primary-500 dark:text-white"
@@ -158,7 +180,7 @@
 
     <!-- Action Buttons -->
     <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-      {#if isSmsNotification && phoneNumber}
+      {#if showReplyButton}
         <button
           on:click|stopPropagation={toggleQuickReply}
           class="p-1.5 text-primary-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded"

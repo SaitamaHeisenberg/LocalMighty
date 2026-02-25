@@ -28,6 +28,7 @@ object SocketManager {
     private var onSendSmsRequest: ((String, String) -> Unit)? = null
     private var onDismissNotificationRequest: ((String) -> Unit)? = null
     private var onDialRequest: ((String) -> Unit)? = null
+    private var onReplyNotificationRequest: ((String, String) -> Unit)? = null
 
     fun connect(serverUrl: String, token: String?) {
         try {
@@ -127,6 +128,16 @@ object SocketManager {
                     }
                 }
 
+                on(SocketEvents.REPLY_NOTIFICATION) { args ->
+                    val data = args.firstOrNull() as? JSONObject
+                    data?.let {
+                        val notificationId = it.optString("notificationId")
+                        val message = it.optString("message")
+                        Log.d(TAG, "Received reply notification request: $notificationId")
+                        onReplyNotificationRequest?.invoke(notificationId, message)
+                    }
+                }
+
                 connect()
             }
 
@@ -166,5 +177,9 @@ object SocketManager {
 
     fun setDialHandler(handler: (number: String) -> Unit) {
         onDialRequest = handler
+    }
+
+    fun setReplyNotificationHandler(handler: (notificationId: String, message: String) -> Unit) {
+        onReplyNotificationRequest = handler
     }
 }

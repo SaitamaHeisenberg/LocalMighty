@@ -1,7 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { db } from '../../config/database.js';
 import { SOCKET_EVENTS } from '@localmighty/shared';
-import type { AppNotification, DismissNotificationPayload } from '@localmighty/shared';
+import type { AppNotification, DismissNotificationPayload, ReplyNotificationPayload } from '@localmighty/shared';
 
 export function setupNotificationHandlers(socket: Socket, io: Server) {
   // Handle new notification from phone
@@ -79,5 +79,13 @@ export function setupNotificationHandlers(socket: Socket, io: Server) {
       id: payload.id,
       dismissed: true,
     });
+  });
+
+  // Handle reply notification request from web (forward to phone)
+  socket.on(SOCKET_EVENTS.REPLY_NOTIFICATION, (payload: ReplyNotificationPayload) => {
+    console.log(`Reply notification request: ${payload.notificationId} -> "${payload.message}"`);
+
+    // Forward to phone
+    io.to('phone').emit(SOCKET_EVENTS.REPLY_NOTIFICATION, payload);
   });
 }
