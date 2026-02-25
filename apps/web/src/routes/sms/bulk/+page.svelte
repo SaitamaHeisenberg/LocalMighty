@@ -8,6 +8,7 @@
   let searchQuery = '';
   let message = '';
   let selectedContacts: Map<string, { contact: Contact; phone: string }> = new Map();
+  let selectedIds: Set<string> = new Set(); // Reactive set for tracking selection
   let sending = false;
   let sendProgress = 0;
   let sendComplete = false;
@@ -18,7 +19,7 @@
     ? contactsStore.search(searchQuery)
     : contacts;
 
-  $: selectedCount = selectedContacts.size;
+  $: selectedCount = selectedIds.size;
   $: canSend = selectedCount > 0 && message.trim().length > 0 && !sending;
 
   onMount(async () => {
@@ -29,18 +30,15 @@
     const key = contact.id;
     if (selectedContacts.has(key)) {
       selectedContacts.delete(key);
-      selectedContacts = selectedContacts;
+      selectedIds.delete(key);
     } else {
       selectedContacts.set(key, {
         contact,
         phone: contact.phoneNumbers[0] || ''
       });
-      selectedContacts = selectedContacts;
+      selectedIds.add(key);
     }
-  }
-
-  function isSelected(contact: Contact): boolean {
-    return selectedContacts.has(contact.id);
+    selectedIds = new Set(selectedIds); // Trigger reactivity
   }
 
   function selectAll() {
@@ -50,14 +48,16 @@
           contact,
           phone: contact.phoneNumbers[0]
         });
+        selectedIds.add(contact.id);
       }
     });
-    selectedContacts = selectedContacts;
+    selectedIds = new Set(selectedIds); // Trigger reactivity
   }
 
   function deselectAll() {
     selectedContacts.clear();
-    selectedContacts = selectedContacts;
+    selectedIds.clear();
+    selectedIds = new Set(selectedIds); // Trigger reactivity
   }
 
   function updatePhone(contactId: string, phone: string) {
@@ -115,7 +115,8 @@
     sendProgress = 0;
     message = '';
     selectedContacts.clear();
-    selectedContacts = selectedContacts;
+    selectedIds.clear();
+    selectedIds = new Set(selectedIds);
   }
 </script>
 
@@ -229,8 +230,8 @@
               <div class="flex items-center gap-3">
                 <!-- Checkbox -->
                 <div class="flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center
-                            {isSelected(contact) ? 'bg-primary-500 border-primary-500' : 'border-gray-300 dark:border-gray-600'}">
-                  {#if isSelected(contact)}
+                            {selectedIds.has(contact.id) ? 'bg-primary-500 border-primary-500' : 'border-gray-300 dark:border-gray-600'}">
+                  {#if selectedIds.has(contact.id)}
                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                     </svg>
@@ -251,7 +252,7 @@
                 </div>
 
                 <!-- Phone selector for multiple numbers -->
-                {#if isSelected(contact) && contact.phoneNumbers.length > 1}
+                {#if selectedIds.has(contact.id) && contact.phoneNumbers.length > 1}
                   <select
                     on:click|stopPropagation
                     on:change={(e) => updatePhone(contact.id, e.currentTarget.value)}
