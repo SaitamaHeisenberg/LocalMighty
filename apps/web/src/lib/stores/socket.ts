@@ -4,7 +4,14 @@ import { browser } from '$app/environment';
 import { contactsStore } from './contacts';
 import { smsStatusStore, type SmsDeliveryStatus } from './smsStatus';
 
-const SERVER_URL = browser ? window.location.origin : 'http://localhost:3001';
+// In production, web runs on port 5173 but API server is on port 3001
+function getServerUrl(): string {
+  if (!browser) return 'http://localhost:3001';
+  const { hostname } = window.location;
+  return `http://${hostname}:3001`;
+}
+
+const SERVER_URL = getServerUrl();
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
 

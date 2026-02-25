@@ -16,9 +16,14 @@ import { getLocalIpAddress } from './utils/network.js';
 const app = express();
 const httpServer = createServer(app);
 
+// CORS - allow all origins in production for local network access
+const corsOrigins = process.env.NODE_ENV === 'production'
+  ? true  // Allow all origins in production (local network)
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+    origin: corsOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -26,7 +31,7 @@ const io = new SocketIOServer(httpServer, {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: corsOrigins,
   credentials: true,
 }));
 app.use(express.json());
