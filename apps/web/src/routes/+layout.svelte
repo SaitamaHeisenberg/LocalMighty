@@ -7,6 +7,7 @@
   import LoadingBar from '$lib/components/ui/LoadingBar.svelte';
   import { socketStore } from '$lib/stores/socket';
   import { statusStore } from '$lib/stores/status';
+  import { callsStore } from '$lib/stores/calls';
   import { desktopNotifications } from '$lib/services/desktopNotifications';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
@@ -15,6 +16,9 @@
     if (browser) {
       const token = localStorage.getItem('localmighty_token');
       socketStore.connect(token || undefined);
+
+      // Load calls for missed calls badge
+      callsStore.load();
 
       // Request notification permission
       if (desktopNotifications.isSupported() && desktopNotifications.getPermission() === 'default') {

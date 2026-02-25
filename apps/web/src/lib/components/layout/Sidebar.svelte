@@ -1,12 +1,12 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { unreadSmsCount, unreadNotificationsCount } from '$lib/stores/unread';
+  import { unreadSmsCount, unreadNotificationsCount, missedCallsCount } from '$lib/stores/unread';
 
   const navItems = [
     { href: '/', label: 'Accueil', icon: 'home', badge: null },
     { href: '/sms', label: 'SMS', icon: 'chat', badge: 'sms' },
     { href: '/sms/bulk', label: 'SMS en masse', icon: 'bulk', badge: null },
-    { href: '/calls', label: 'Appels', icon: 'phone', badge: null },
+    { href: '/calls', label: 'Appels', icon: 'phone', badge: 'calls' },
     { href: '/contacts', label: 'Contacts', icon: 'users', badge: null },
     { href: '/notifications', label: 'Notifications', icon: 'bell', badge: 'notif' },
     { href: '/settings', label: 'Parametres', icon: 'cog', badge: null },
@@ -20,6 +20,7 @@
   function getBadgeCount(badge: string | null): number {
     if (badge === 'sms') return $unreadSmsCount;
     if (badge === 'notif') return $unreadNotificationsCount;
+    if (badge === 'calls') return $missedCallsCount;
     return 0;
   }
 </script>

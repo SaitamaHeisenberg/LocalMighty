@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { callsStore, type CallLogEntry, type CallType } from '$lib/stores/calls';
   import { contactsStore } from '$lib/stores/contacts';
-  import { socketStore } from '$lib/stores/socket';
   import { phoneStatusStore } from '$lib/stores/status';
+  import { missedCallsCount } from '$lib/stores/unread';
 
   let loading = true;
   let filter: 'all' | CallType = 'all';
@@ -24,13 +24,8 @@
     await contactsStore.load();
     loading = false;
 
-    // Listen for new calls
-    const socket = socketStore.getSocket();
-    if (socket) {
-      socket.on('call_log_update', (call: CallLogEntry) => {
-        callsStore.addCall(call);
-      });
-    }
+    // Mark missed calls as seen when visiting this page
+    missedCallsCount.markAsSeen();
   });
 
   function formatDuration(seconds: number): string {
