@@ -2,6 +2,10 @@
 
 Synchronisation SMS et notifications entre Android et PC via Wi-Fi local.
 
+[![GitHub](https://img.shields.io/github/license/SaitamaHeisenberg/LocalMighty)](LICENSE)
+
+> **Documentation complete** : [DOCUMENTATION.md](DOCUMENTATION.md)
+
 ## Structure du projet
 
 ```
