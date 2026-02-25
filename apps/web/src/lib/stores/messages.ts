@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import { socketStore } from './socket';
 import { browser } from '$app/environment';
+import { apiUrl } from '$lib/api';
 
 export interface SmsMessage {
   id: string;
@@ -42,7 +43,7 @@ function createMessagesStore() {
       if (!browser) return [];
 
       try {
-        const res = await fetch(`/api/messages/thread/${threadId}`);
+        const res = await fetch(apiUrl(`/api/messages/thread/${threadId}`));
         if (!res.ok) throw new Error('Failed to load messages');
         const messages = await res.json();
         set(messages);
@@ -67,7 +68,7 @@ function createThreadsStore() {
       if (!browser) return [];
 
       try {
-        const res = await fetch('/api/messages/threads');
+        const res = await fetch(apiUrl('/api/messages/threads'));
         if (!res.ok) throw new Error('Failed to load threads');
         const threads = await res.json();
         set(threads);

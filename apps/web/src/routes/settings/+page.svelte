@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import { apiUrl } from '$lib/api';
 
   let serverInfo: { ip: string; port: number; name: string; version: string } | null = null;
   let token = '';
@@ -14,7 +15,7 @@
     }
 
     try {
-      const res = await fetch('/api/info');
+      const res = await fetch(apiUrl('/api/info'));
       if (res.ok) {
         serverInfo = await res.json();
       }
@@ -33,7 +34,7 @@
     pairError = '';
 
     try {
-      const res = await fetch('/api/auth/pair', {
+      const res = await fetch(apiUrl('/api/auth/pair'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceName: newDeviceName }),

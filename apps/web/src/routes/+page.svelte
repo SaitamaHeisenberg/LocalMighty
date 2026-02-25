@@ -3,13 +3,14 @@
   import { threadsStore } from '$lib/stores/messages';
   import { notificationsStore } from '$lib/stores/notifications';
   import { connectionStatus } from '$lib/stores/socket';
+  import { apiUrl } from '$lib/api';
   import { onMount } from 'svelte';
 
   let serverInfo: { ip: string; port: number } | null = null;
 
   onMount(async () => {
     try {
-      const res = await fetch('/api/info');
+      const res = await fetch(apiUrl('/api/info'));
       if (res.ok) {
         serverInfo = await res.json();
       }

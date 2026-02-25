@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { apiUrl } from '$lib/api';
 
 export interface Contact {
   id: string;
@@ -72,7 +73,7 @@ function createContactsStore() {
       loading = true;
       loadPromise = (async () => {
         try {
-          const res = await fetch('/api/contacts');
+          const res = await fetch(apiUrl('/api/contacts'));
           if (!res.ok) throw new Error('Failed to load contacts');
           const contacts = await res.json();
           set(contacts);
@@ -94,7 +95,7 @@ function createContactsStore() {
     fetchInBackground: async () => {
       if (loading) return;
       try {
-        const res = await fetch('/api/contacts');
+        const res = await fetch(apiUrl('/api/contacts'));
         if (!res.ok) return;
         const contacts = await res.json();
         set(contacts);

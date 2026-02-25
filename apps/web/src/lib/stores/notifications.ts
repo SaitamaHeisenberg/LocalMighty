@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import { socketStore } from './socket';
 import { browser } from '$app/environment';
+import { apiUrl } from '$lib/api';
 
 export interface AppNotification {
   id: string;
@@ -44,7 +45,7 @@ function createNotificationsStore() {
       if (!browser) return [];
 
       try {
-        const res = await fetch('/api/notifications');
+        const res = await fetch(apiUrl('/api/notifications'));
         if (!res.ok) throw new Error('Failed to load notifications');
         const notifications = await res.json();
         set(notifications);

@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { apiUrl } from '$lib/api';
 
 export type CallType = 'incoming' | 'outgoing' | 'missed' | 'rejected' | 'voicemail';
 
@@ -27,7 +28,7 @@ function createCallsStore() {
 
       loading = true;
       try {
-        const res = await fetch('/api/calls?limit=200');
+        const res = await fetch(apiUrl('/api/calls?limit=200'));
         if (!res.ok) throw new Error('Failed to load calls');
         const calls = await res.json();
         set(calls);
