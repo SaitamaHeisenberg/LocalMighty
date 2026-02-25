@@ -29,7 +29,7 @@
 | Champ | Valeur |
 |-------|--------|
 | **Login** | root |
-| **Mot de passe** | 259983 |
+| **Mot de passe** | *(defini lors de l'installation)* |
 
 ### Depuis le PC (SSH)
 
