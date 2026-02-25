@@ -44,6 +44,7 @@ fun MainScreen() {
     val connectionState by SocketManager.connectionState.collectAsState()
     val hasPermissions = remember { mutableStateOf(PermissionHelper.hasAllPermissions(context)) }
     val hasNotificationAccess = remember { mutableStateOf(PermissionHelper.isNotificationListenerEnabled(context)) }
+    var isBatteryOptimized by remember { mutableStateOf(!PermissionHelper.isBatteryOptimizationDisabled(context)) }
 
     // Load saved settings
     LaunchedEffect(Unit) {
@@ -389,6 +390,49 @@ fun MainScreen() {
                 }
             }
 
+            // Battery Optimization Warning
+            if (isBatteryOptimized) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFEE2E2)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Optimisation batterie activee",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFDC2626)
+                        )
+                        Text(
+                            text = "L'app risque d'etre fermee en arriere-plan. Desactivez l'optimisation pour maintenir la connexion.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFDC2626)
+                        )
+                        Button(
+                            onClick = {
+                                PermissionHelper.requestDisableBatteryOptimization(context)
+                                // Refresh state after a delay
+                                scope.launch {
+                                    kotlinx.coroutines.delay(1000)
+                                    isBatteryOptimized = !PermissionHelper.isBatteryOptimizationDisabled(context)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFDC2626)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Desactiver l'optimisation")
+                        }
+                    }
+                }
+            }
+
             // HyperOS Note
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -407,14 +451,24 @@ fun MainScreen() {
                         color = Color(0xFF92400E)
                     )
                     Text(
-                        text = "Activez 'Demarrage automatique' et desactivez 'Optimisation de batterie' pour LocalMighty dans les parametres.",
+                        text = "Activez 'Demarrage automatique' et verrouillez l'app dans les recents pour eviter les deconnexions.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF92400E)
                     )
-                    TextButton(
-                        onClick = { PermissionHelper.openAutoStartSettings(context) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Ouvrir les parametres", color = Color(0xFF92400E))
+                        TextButton(
+                            onClick = { PermissionHelper.openAutoStartSettings(context) }
+                        ) {
+                            Text("Autostart", color = Color(0xFF92400E))
+                        }
+                        TextButton(
+                            onClick = { PermissionHelper.openBatteryOptimizationSettings(context) }
+                        ) {
+                            Text("Batterie", color = Color(0xFF92400E))
+                        }
                     }
                 }
             }

@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -60,6 +61,7 @@ class SyncForegroundService : Service() {
     private lateinit var batteryReceiver: BatteryReceiver
     private val handler = Handler(Looper.getMainLooper())
     private var heartbeatRunnable: Runnable? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -102,6 +104,9 @@ class SyncForegroundService : Service() {
     private fun startSync(serverUrl: String, token: String?) {
         Log.d(TAG, "Starting sync with $serverUrl")
 
+        // Acquire WakeLock to prevent CPU from sleeping
+        acquireWakeLock()
+
         // Connect to server
         SocketManager.connect(serverUrl, token)
 
@@ -123,6 +128,7 @@ class SyncForegroundService : Service() {
         batteryReceiver.unregister(this)
         stopHeartbeat()
         SocketManager.disconnect()
+        releaseWakeLock()
     }
 
     private fun performInitialSync() {
@@ -161,6 +167,30 @@ class SyncForegroundService : Service() {
     private fun stopHeartbeat() {
         heartbeatRunnable?.let { handler.removeCallbacks(it) }
         heartbeatRunnable = null
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock == null) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "LocalMighty::SyncWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+            Log.d(TAG, "WakeLock acquired")
+        }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+                Log.d(TAG, "WakeLock released")
+            }
+        }
+        wakeLock = null
     }
 
     private var smsRequestCode = 0

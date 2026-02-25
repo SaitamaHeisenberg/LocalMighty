@@ -22,6 +22,10 @@ export interface SmsThread {
   unreadCount: number;
 }
 
+export interface SearchResult extends SmsMessage {
+  contactName?: string;
+}
+
 function createMessagesStore() {
   const { subscribe, set, update } = writable<SmsMessage[]>([]);
 
@@ -103,6 +107,56 @@ function createThreadsStore() {
 
 export const messagesStore = createMessagesStore();
 export const threadsStore = createThreadsStore();
+
+// Search store
+function createSearchStore() {
+  const { subscribe, set } = writable<SearchResult[]>([]);
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  let lastQuery = '';
+
+  return {
+    subscribe,
+    search: async (query: string): Promise<SearchResult[]> => {
+      if (!browser) return [];
+
+      // Debounce
+      if (searchTimeout) clearTimeout(searchTimeout);
+
+      // Min 2 characters
+      if (query.length < 2) {
+        set([]);
+        lastQuery = '';
+        return [];
+      }
+
+      // Same query, skip
+      if (query === lastQuery) return [];
+
+      return new Promise((resolve) => {
+        searchTimeout = setTimeout(async () => {
+          try {
+            lastQuery = query;
+            const res = await fetch(apiUrl(`/api/messages/search?q=${encodeURIComponent(query)}`));
+            if (!res.ok) throw new Error('Search failed');
+            const results = await res.json();
+            set(results);
+            resolve(results);
+          } catch (error) {
+            console.error('Search failed:', error);
+            set([]);
+            resolve([]);
+          }
+        }, 300); // 300ms debounce
+      });
+    },
+    clear: () => {
+      lastQuery = '';
+      set([]);
+    }
+  };
+}
+
+export const searchStore = createSearchStore();
 
 // Setup socket listeners
 if (browser) {

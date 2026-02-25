@@ -73,6 +73,42 @@ router.get('/thread/:threadId', (req, res) => {
   res.json(messages.reverse()); // Return in chronological order
 });
 
+// Search messages (must be before /:id to avoid conflict)
+router.get('/search', (req, res) => {
+  const q = req.query.q as string;
+  const limit = parseInt(req.query.limit as string) || 50;
+
+  if (!q || q.length < 2) {
+    return res.json([]);
+  }
+
+  // Search in message body AND contact names
+  const messages = db.prepare(`
+    SELECT DISTINCT
+      m.id,
+      m.thread_id as threadId,
+      m.address,
+      m.body,
+      m.date,
+      m.type,
+      m.read
+    FROM messages m
+    LEFT JOIN contact_phones cp ON m.address LIKE '%' || SUBSTR(cp.phone_number, -9)
+    LEFT JOIN contacts c ON cp.contact_id = c.id
+    WHERE m.body LIKE ? OR c.name LIKE ? OR m.address LIKE ?
+    ORDER BY m.date DESC
+    LIMIT ?
+  `).all(`%${q}%`, `%${q}%`, `%${q}%`, limit) as { id: string; threadId: string; address: string; body: string; date: number; type: string; read: number }[];
+
+  // Add contact names and highlight info
+  const messagesWithNames = messages.map(msg => ({
+    ...msg,
+    contactName: findContactName(msg.address)
+  }));
+
+  res.json(messagesWithNames);
+});
+
 // Get single message
 router.get('/:id', (req, res) => {
   const { id } = req.params;
@@ -95,39 +131,6 @@ router.get('/:id', (req, res) => {
   }
 
   res.json(message);
-});
-
-// Search messages
-router.get('/search', (req, res) => {
-  const q = req.query.q as string;
-  const limit = parseInt(req.query.limit as string) || 100;
-
-  if (!q) {
-    return res.json([]);
-  }
-
-  const messages = db.prepare(`
-    SELECT
-      id,
-      thread_id as threadId,
-      address,
-      body,
-      date,
-      type,
-      read
-    FROM messages
-    WHERE body LIKE ?
-    ORDER BY date DESC
-    LIMIT ?
-  `).all(`%${q}%`, limit) as { id: string; threadId: string; address: string; body: string; date: number; type: string; read: number }[];
-
-  // Add contact names
-  const messagesWithNames = messages.map(msg => ({
-    ...msg,
-    contactName: findContactName(msg.address)
-  }));
-
-  res.json(messagesWithNames);
 });
 
 // Mark thread as read

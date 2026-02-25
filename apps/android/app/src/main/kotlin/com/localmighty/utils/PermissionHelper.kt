@@ -6,7 +6,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -92,6 +94,38 @@ object PermissionHelper {
             context.startActivity(intent)
         } catch (e: Exception) {
             // Fallback to app settings
+            openAppSettings(context)
+        }
+    }
+
+    // Check if battery optimization is disabled for this app
+    fun isBatteryOptimizationDisabled(context: Context): Boolean {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    // Request to disable battery optimization
+    fun requestDisableBatteryOptimization(context: Context) {
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback to battery optimization settings
+            openBatteryOptimizationSettings(context)
+        }
+    }
+
+    // Open battery optimization settings
+    fun openBatteryOptimizationSettings(context: Context) {
+        try {
+            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
             openAppSettings(context)
         }
     }

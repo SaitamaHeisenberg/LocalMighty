@@ -40,7 +40,16 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit - LocalMighty SMS & Notifications Sync\n\nFeatures:\n- Android app \\(Kotlin + Jetpack Compose\\)\n  - SMS sync and sending\n  - Notification mirroring\n  - Battery status\n  - Auto-reconnection with UI feedback\n\n- Web dashboard \\(SvelteKit + Tailwind\\)\n  - SMS conversations view\n  - Contact list with search\n  - Notifications panel\n  - Real-time updates via Socket.io\n\n- Server \\(Node.js + Express + Socket.io\\)\n  - SQLite database for persistence\n  - REST API endpoints\n  - WebSocket handlers\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(start \"LocalMighty Server\" /MIN cmd /c \"pnpm dev:server\")",
+      "Bash(start \"LocalMighty Web\" /MIN cmd /c \"pnpm dev:web\")",
+      "Bash(\"C:\\\\Users\\\\AJB_ELITE\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" logcat -s SocketManager:D SyncForegroundService:D)",
+      "Bash(\"C:\\\\Users\\\\AJB_ELITE\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" logcat -d -s SocketManager:D SyncForegroundService:D)",
+      "Bash(Select-String -Pattern \"DIAL\")",
+      "Bash(Select-Object -Last 20)",
+      "Bash(C:/Users/AJB_ELITE/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat -d -s SocketManager:D SyncForegroundService:D)",
+      "Bash(C:/Users/AJB_ELITE/AppData/Local/Android/Sdk/platform-tools/adb.exe logcat:*)",
+      "Bash(ssh:*)"
     ]
   }
 }
