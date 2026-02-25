@@ -2,6 +2,9 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { initializeDatabase } from './config/database.js';
 import { setupSocketHandlers } from './socket/index.js';
 import messagesRouter from './routes/messages.js';
@@ -12,6 +15,9 @@ import callsRouter from './routes/calls.js';
 import { authMiddleware } from './middleware/auth.js';
 import { startMdnsAdvertisement } from './services/mdns.js';
 import { getLocalIpAddress } from './utils/network.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -62,8 +68,34 @@ app.get('/api/info', (_req, res) => {
 // Socket.io
 setupSocketHandlers(io);
 
-export function startServer(port: number = 3001) {
+// Load SvelteKit handler
+async function loadSvelteKitHandler() {
+  const webBuildPath = path.resolve(__dirname, '../web-build');
+
+  if (fs.existsSync(webBuildPath)) {
+    try {
+      // Serve static client files
+      app.use(express.static(path.join(webBuildPath, 'client')));
+
+      // Import and use SvelteKit handler for SSR
+      const handlerPath = path.join(webBuildPath, 'handler.js');
+      const { handler } = await import(`file://${handlerPath.replace(/\\/g, '/')}`);
+      app.use(handler);
+      console.log('SvelteKit app loaded successfully');
+    } catch (err) {
+      console.error('Failed to load SvelteKit handler:', err);
+    }
+  } else {
+    console.log('No web-build found at:', webBuildPath);
+    console.log('Serving API only');
+  }
+}
+
+export async function startServer(port: number = 3001) {
   initializeDatabase();
+
+  // Load SvelteKit handler before starting server
+  await loadSvelteKitHandler();
 
   const host = process.env.HOST || '0.0.0.0';
 

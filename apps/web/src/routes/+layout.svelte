@@ -8,12 +8,16 @@
   import { socketStore } from '$lib/stores/socket';
   import { statusStore } from '$lib/stores/status';
   import { callsStore } from '$lib/stores/calls';
+  import { themeStore } from '$lib/stores/theme';
   import { desktopNotifications } from '$lib/services/desktopNotifications';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
 
   onMount(async () => {
     if (browser) {
+      // Initialize theme
+      themeStore.init();
+
       const token = localStorage.getItem('localmighty_token');
       socketStore.connect(token || undefined);
 

@@ -2,12 +2,21 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { apiUrl } from '$lib/api';
+  import { themeStore } from '$lib/stores/theme';
 
   let serverInfo: { ip: string; port: number; name: string; version: string } | null = null;
   let token = '';
   let newDeviceName = '';
   let pairing = false;
   let pairError = '';
+
+  // Theme options
+  type Theme = 'light' | 'dark' | 'system';
+  const themeOptions: { value: Theme; label: string; icon: string }[] = [
+    { value: 'light', label: 'Clair', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
+    { value: 'dark', label: 'Sombre', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
+    { value: 'system', label: 'Systeme', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+  ];
 
   onMount(async () => {
     if (browser) {
@@ -66,7 +75,39 @@
 </script>
 
 <div class="h-full overflow-y-auto p-6">
-  <h1 class="text-2xl font-bold mb-6">Parametres</h1>
+  <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Parametres</h1>
+
+  <!-- Theme -->
+  <div class="card p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Apparence</h2>
+
+    <div class="flex gap-2">
+      {#each themeOptions as option}
+        <button
+          on:click={() => themeStore.set(option.value)}
+          class="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all
+                 {$themeStore === option.value
+                   ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}"
+        >
+          <div class="w-10 h-10 rounded-full flex items-center justify-center
+                      {$themeStore === option.value
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={option.icon} />
+            </svg>
+          </div>
+          <span class="text-sm font-medium
+                       {$themeStore === option.value
+                         ? 'text-primary-600 dark:text-primary-400'
+                         : 'text-gray-600 dark:text-gray-300'}">
+            {option.label}
+          </span>
+        </button>
+      {/each}
+    </div>
+  </div>
 
   <!-- Server Info -->
   <div class="card p-6 mb-6">
