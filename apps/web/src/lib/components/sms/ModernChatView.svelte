@@ -1,6 +1,6 @@
 <script lang="ts">
   import { threadsStore, messagesStore, type SmsThread, type SmsMessage } from '$lib/stores/messages';
-  import { modernThemeStore } from '$lib/stores/chatLayout';
+  import { chatLayoutStore, modernThemeStore } from '$lib/stores/chatLayout';
   import { formatRelativeTime, formatPhoneNumber, formatTime, truncate } from '$lib/utils/formatters';
   import { socketStore } from '$lib/stores/socket';
   import { toast } from '$lib/stores/toast';
@@ -10,7 +10,6 @@
   let selectedThread: SmsThread | null = null;
   let messagesContainer: HTMLDivElement;
   let replyMessage = '';
-  let sending = false;
 
   onMount(async () => {
     await threadsStore.load();
@@ -49,10 +48,9 @@
     return msg.type === 'sent' || msg.type === 'outbox';
   }
 
-  async function sendReply() {
+  function sendReply() {
     if (!replyMessage.trim() || !selectedThread) return;
 
-    sending = true;
     const socket = socketStore.getSocket();
 
     if (socket) {
@@ -60,13 +58,11 @@
         address: selectedThread.address,
         body: replyMessage.trim(),
       });
-      replyMessage = '';
       toast('SMS envoye', 'success');
+      replyMessage = '';
     } else {
       toast('Non connecte au telephone', 'error');
     }
-
-    sending = false;
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -82,8 +78,35 @@
 <div class="modern-chat-container h-full flex {$modernThemeStore === 'dark-blue' ? 'theme-dark-blue' : 'theme-light'}">
   <!-- Sidebar / Conversations -->
   <aside class="sidebar w-72 flex-shrink-0 flex flex-col border-r overflow-hidden">
-    <div class="sidebar-header p-4 border-b">
+    <div class="sidebar-header p-3 border-b flex items-center justify-between">
       <h2 class="font-semibold">Conversations</h2>
+      <!-- Layout controls -->
+      <div class="flex items-center gap-1">
+        <button
+          on:click={() => modernThemeStore.toggle()}
+          class="p-1.5 rounded hover:bg-black/10 transition-colors"
+          title={$modernThemeStore === 'light' ? 'Theme Bleu' : 'Theme Clair'}
+        >
+          {#if $modernThemeStore === 'light'}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          {:else}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          {/if}
+        </button>
+        <button
+          on:click={() => chatLayoutStore.set('classic')}
+          class="p-1.5 rounded hover:bg-black/10 transition-colors"
+          title="Vue Classique"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div class="flex-1 overflow-y-auto">
@@ -189,19 +212,12 @@
           />
           <button
             on:click={sendReply}
-            disabled={!replyMessage.trim() || sending}
+            disabled={!replyMessage.trim()}
             class="send-btn px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
           >
-            {#if sending}
-              <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-              </svg>
-            {:else}
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            {/if}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
           </button>
         </div>
         <div class="toolbar flex justify-between items-center mt-3 text-sm opacity-60">
