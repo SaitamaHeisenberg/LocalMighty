@@ -7,13 +7,19 @@
   import LoadingBar from '$lib/components/ui/LoadingBar.svelte';
   import { socketStore } from '$lib/stores/socket';
   import { statusStore } from '$lib/stores/status';
+  import { desktopNotifications } from '$lib/services/desktopNotifications';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
 
-  onMount(() => {
+  onMount(async () => {
     if (browser) {
       const token = localStorage.getItem('localmighty_token');
       socketStore.connect(token || undefined);
+
+      // Request notification permission
+      if (desktopNotifications.isSupported() && desktopNotifications.getPermission() === 'default') {
+        await desktopNotifications.requestPermission();
+      }
     }
   });
 

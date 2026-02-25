@@ -2,6 +2,7 @@ import { writable, derived } from 'svelte/store';
 import { socketStore } from './socket';
 import { browser } from '$app/environment';
 import { apiUrl } from '$lib/api';
+import { desktopNotifications } from '$lib/services/desktopNotifications';
 
 export interface SmsMessage {
   id: string;
@@ -162,10 +163,20 @@ export const searchStore = createSearchStore();
 if (browser) {
   socketStore.subscribe((socket) => {
     if (socket) {
-      socket.on('update_sms', (message: SmsMessage) => {
+      socket.on('update_sms', (message: SmsMessage & { contactName?: string }) => {
         console.log('New SMS received:', message.address);
         messagesStore.addMessage(message);
         threadsStore.updateThread(message.threadId, message.body, message.date, message.address);
+
+        // Show desktop notification for incoming messages
+        if (message.type === 'inbox') {
+          desktopNotifications.showSms(
+            message.contactName || '',
+            message.address,
+            message.body,
+            message.threadId
+          );
+        }
       });
 
       // Load threads when socket connects

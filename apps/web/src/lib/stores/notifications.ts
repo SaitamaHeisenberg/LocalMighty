@@ -2,6 +2,7 @@ import { writable } from 'svelte/store';
 import { socketStore } from './socket';
 import { browser } from '$app/environment';
 import { apiUrl } from '$lib/api';
+import { desktopNotifications } from '$lib/services/desktopNotifications';
 
 export interface AppNotification {
   id: string;
@@ -74,6 +75,14 @@ if (browser) {
           );
         } else {
           notificationsStore.add(notification);
+
+          // Show desktop notification
+          desktopNotifications.showAppNotification(
+            notification.appName,
+            notification.title,
+            notification.text,
+            notification.id
+          );
         }
       });
     }
