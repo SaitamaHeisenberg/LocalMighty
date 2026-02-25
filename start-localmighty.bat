@@ -13,14 +13,14 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3001') do taskkill /F /PID %
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5173') do taskkill /F /PID %%a >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-:: Demarrer le serveur en arriere-plan
+:: Demarrer le serveur en fenetre separee (minimisee)
 echo Demarrage du serveur Node.js...
-start /B cmd /c "pnpm dev:server"
+start "LocalMighty Server" /MIN cmd /c "pnpm dev:server"
 timeout /t 5 /nobreak >nul
 
-:: Demarrer le dashboard web en arriere-plan
+:: Demarrer le dashboard web en fenetre separee (minimisee)
 echo Demarrage du dashboard SvelteKit...
-start /B cmd /c "pnpm dev:web"
+start "LocalMighty Web" /MIN cmd /c "pnpm dev:web"
 timeout /t 8 /nobreak >nul
 
 :: Ouvrir le navigateur
@@ -34,6 +34,8 @@ echo   Dashboard: http://localhost:5173
 echo   Serveur:   http://localhost:3001
 echo =========================================
 echo.
-echo Appuyez sur une touche pour fermer cette fenetre...
-echo (Les serveurs continueront de tourner en arriere-plan)
-pause >nul
+echo Les serveurs tournent dans des fenetres minimisees.
+echo Utilisez stop-localmighty.bat pour les arreter.
+echo.
+echo Cette fenetre va se fermer dans 5 secondes...
+timeout /t 5 /nobreak >nul

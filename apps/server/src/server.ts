@@ -8,6 +8,7 @@ import messagesRouter from './routes/messages.js';
 import notificationsRouter from './routes/notifications.js';
 import authRouter from './routes/auth.js';
 import contactsRouter from './routes/contacts.js';
+import callsRouter from './routes/calls.js';
 import { authMiddleware } from './middleware/auth.js';
 import { startMdnsAdvertisement } from './services/mdns.js';
 import { getLocalIpAddress } from './utils/network.js';
@@ -35,6 +36,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/contacts', contactsRouter);
+app.use('/api/calls', callsRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

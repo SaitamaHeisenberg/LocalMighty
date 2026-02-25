@@ -6,6 +6,7 @@
     { href: '/', label: 'Accueil', icon: 'home', badge: null },
     { href: '/sms', label: 'SMS', icon: 'chat', badge: 'sms' },
     { href: '/sms/bulk', label: 'SMS en masse', icon: 'bulk', badge: null },
+    { href: '/calls', label: 'Appels', icon: 'phone', badge: null },
     { href: '/contacts', label: 'Contacts', icon: 'users', badge: null },
     { href: '/notifications', label: 'Notifications', icon: 'bell', badge: 'notif' },
     { href: '/settings', label: 'Parametres', icon: 'cog', badge: null },
@@ -45,6 +46,10 @@
           {:else if item.icon === 'bulk'}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+            </svg>
+          {:else if item.icon === 'phone'}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
           {:else if item.icon === 'users'}
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

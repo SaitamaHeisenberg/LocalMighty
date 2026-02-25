@@ -27,6 +27,7 @@ object SocketManager {
 
     private var onSendSmsRequest: ((String, String) -> Unit)? = null
     private var onDismissNotificationRequest: ((String) -> Unit)? = null
+    private var onDialRequest: ((String) -> Unit)? = null
 
     fun connect(serverUrl: String, token: String?) {
         try {
@@ -110,6 +111,22 @@ object SocketManager {
                     // Trigger sync (will be handled by the service)
                 }
 
+                on(SocketEvents.DIAL_NUMBER) { args ->
+                    Log.d(TAG, "[DIAL] Event received! Args count: ${args.size}")
+                    args.forEachIndexed { index, arg ->
+                        Log.d(TAG, "[DIAL] Arg[$index]: ${arg?.javaClass?.simpleName} = $arg")
+                    }
+                    val data = args.firstOrNull() as? JSONObject
+                    if (data != null) {
+                        val number = data.optString("number")
+                        Log.d(TAG, "[DIAL] Parsed number: $number")
+                        Log.d(TAG, "[DIAL] Handler registered: ${onDialRequest != null}")
+                        onDialRequest?.invoke(number)
+                    } else {
+                        Log.e(TAG, "[DIAL] Failed to parse data as JSONObject")
+                    }
+                }
+
                 connect()
             }
 
@@ -145,5 +162,9 @@ object SocketManager {
 
     fun setDismissNotificationHandler(handler: (id: String) -> Unit) {
         onDismissNotificationRequest = handler
+    }
+
+    fun setDialHandler(handler: (number: String) -> Unit) {
+        onDialRequest = handler
     }
 }

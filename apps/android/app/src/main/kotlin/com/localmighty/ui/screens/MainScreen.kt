@@ -270,7 +270,7 @@ fun MainScreen() {
                 }
             }
 
-            // Permissions Card
+            // Permissions Card - Detailed view
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -278,26 +278,69 @@ fun MainScreen() {
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Permissions",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    // SMS Permissions
-                    PermissionRow(
-                        title = "SMS",
-                        description = "Lecture et envoi de SMS",
-                        granted = hasPermissions.value,
-                        onRequest = {
-                            permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Permissions",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(
+                            onClick = {
+                                permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS)
+                            }
+                        ) {
+                            Text("Tout autoriser")
                         }
+                    }
+
+                    // Individual permissions
+                    PermissionRow(
+                        title = "Lire SMS",
+                        description = Manifest.permission.READ_SMS,
+                        granted = PermissionHelper.hasPermission(context, Manifest.permission.READ_SMS),
+                        onRequest = { permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS) }
+                    )
+                    PermissionRow(
+                        title = "Envoyer SMS",
+                        description = Manifest.permission.SEND_SMS,
+                        granted = PermissionHelper.hasPermission(context, Manifest.permission.SEND_SMS),
+                        onRequest = { permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS) }
+                    )
+                    PermissionRow(
+                        title = "Recevoir SMS",
+                        description = Manifest.permission.RECEIVE_SMS,
+                        granted = PermissionHelper.hasPermission(context, Manifest.permission.RECEIVE_SMS),
+                        onRequest = { permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS) }
+                    )
+                    PermissionRow(
+                        title = "Lire Contacts",
+                        description = Manifest.permission.READ_CONTACTS,
+                        granted = PermissionHelper.hasPermission(context, Manifest.permission.READ_CONTACTS),
+                        onRequest = { permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS) }
+                    )
+                    PermissionRow(
+                        title = "Lire Journal Appels",
+                        description = Manifest.permission.READ_CALL_LOG,
+                        granted = PermissionHelper.hasPermission(context, Manifest.permission.READ_CALL_LOG),
+                        onRequest = { permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS) }
+                    )
+                    PermissionRow(
+                        title = "Passer Appels",
+                        description = Manifest.permission.CALL_PHONE,
+                        granted = PermissionHelper.hasPermission(context, Manifest.permission.CALL_PHONE),
+                        onRequest = { permissionLauncher.launch(PermissionHelper.REQUIRED_PERMISSIONS) }
                     )
 
-                    // Notification Access
+                    Divider()
+
+                    // Notification Access (special permission)
                     PermissionRow(
-                        title = "Notifications",
-                        description = "Acces aux notifications",
+                        title = "Acces Notifications",
+                        description = "Permission speciale",
                         granted = hasNotificationAccess.value,
                         onRequest = {
                             PermissionHelper.openNotificationListenerSettings(context)

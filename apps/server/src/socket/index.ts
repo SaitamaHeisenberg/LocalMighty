@@ -5,6 +5,7 @@ import { setupSmsHandlers } from './handlers/sms.js';
 import { setupNotificationHandlers } from './handlers/notification.js';
 import { setupStatusHandlers } from './handlers/status.js';
 import { setupContactsHandlers } from './handlers/contacts.js';
+import { setupCallsHandlers } from './handlers/calls.js';
 
 interface PhoneState {
   connected: boolean;
@@ -62,7 +63,11 @@ export function setupSocketHandlers(io: SocketIOServer) {
       phoneState.lastSeen = Date.now();
 
       socket.join('phone');
-      console.log(`Phone connected: ${data.deviceName}`);
+      console.log(`[PHONE] Connected: ${data.deviceName}, socketId: ${socket.id}`);
+
+      // Log phone room status
+      const phoneRoom = io.sockets.adapter.rooms.get('phone');
+      console.log(`[PHONE] Room 'phone' now has ${phoneRoom?.size || 0} members`);
 
       // Notify web clients
       io.to('web-clients').emit(SOCKET_EVENTS.PHONE_STATUS, {
@@ -76,6 +81,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
     setupNotificationHandlers(socket, io);
     setupStatusHandlers(socket, io);
     setupContactsHandlers(socket, io);
+    setupCallsHandlers(socket, io);
 
     // Handle disconnection
     socket.on('disconnect', (reason) => {

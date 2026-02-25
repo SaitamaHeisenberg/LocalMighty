@@ -14,9 +14,12 @@ object SocketEvents {
     const val SMS_SENT = "sms_sent"
     const val SMS_DELIVERED = "sms_delivered"
     const val SMS_FAILED = "sms_failed"
+    const val CALL_LOG_SYNC = "call_log_sync"
+    const val NEW_CALL = "new_call"
 
     // Server -> Phone
     const val SEND_SMS = "send_sms"
     const val DISMISS_NOTIFICATION = "dismiss_notif"
     const val REQUEST_SYNC = "request_sync"
+    const val DIAL_NUMBER = "dial_number"
 }

@@ -12,12 +12,15 @@ export const SOCKET_EVENTS = {
   SMS_SENT: 'sms_sent',
   SMS_DELIVERED: 'sms_delivered',
   SMS_FAILED: 'sms_failed',
+  CALL_LOG_SYNC: 'call_log_sync',
+  NEW_CALL: 'new_call',
 
   // Server -> Phone
   SEND_SMS: 'send_sms',
   SEND_BULK_SMS: 'send_bulk_sms',
   DISMISS_NOTIFICATION: 'dismiss_notif',
   REQUEST_SYNC: 'request_sync',
+  DIAL_NUMBER: 'dial_number',
 
   // Server -> Web
   UPDATE_SMS: 'update_sms',
@@ -27,6 +30,8 @@ export const SOCKET_EVENTS = {
   SMS_SYNC_COMPLETE: 'sms_sync_complete',
   CONTACTS_SYNC_COMPLETE: 'contacts_sync_complete',
   SMS_STATUS_UPDATE: 'sms_status_update',
+  CALL_LOG_UPDATE: 'call_log_update',
+  CALL_LOG_SYNC_COMPLETE: 'call_log_sync_complete',
 
   // Web -> Server
   JOIN: 'join',

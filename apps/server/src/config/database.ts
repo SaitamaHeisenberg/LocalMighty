@@ -67,7 +67,19 @@ export function initializeDatabase() {
       FOREIGN KEY (contact_id) REFERENCES contacts(id)
     );
 
+    CREATE TABLE IF NOT EXISTS calls (
+      id TEXT PRIMARY KEY,
+      number TEXT NOT NULL,
+      contact_name TEXT,
+      type TEXT NOT NULL,
+      date INTEGER NOT NULL,
+      duration INTEGER DEFAULT 0,
+      synced_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
+    CREATE INDEX IF NOT EXISTS idx_calls_date ON calls(date DESC);
+    CREATE INDEX IF NOT EXISTS idx_calls_number ON calls(number);
     CREATE INDEX IF NOT EXISTS idx_contact_phones_number ON contact_phones(phone_number);
     CREATE INDEX IF NOT EXISTS idx_messages_date ON messages(date DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_address ON messages(address);

@@ -22,6 +22,8 @@ import com.localmighty.network.SocketManager
 import com.localmighty.helpers.ContactsHelper
 import com.localmighty.observers.BatteryReceiver
 import com.localmighty.observers.SmsContentObserver
+import com.localmighty.utils.CallLogReader
+import com.localmighty.utils.PermissionHelper
 import com.localmighty.utils.SmsReader
 import org.json.JSONObject
 
@@ -69,6 +71,12 @@ class SyncForegroundService : Service() {
         // Handle SMS send requests
         SocketManager.setSendSmsHandler { address, body ->
             sendSms(address, body)
+        }
+
+        // Handle dial requests
+        SocketManager.setDialHandler { number ->
+            Log.d(TAG, "[DIAL] Handler called with number: $number")
+            dialNumber(number)
         }
     }
 
@@ -129,6 +137,11 @@ class SyncForegroundService : Service() {
                 val contacts = ContactsHelper.getContactsAsJson(this)
                 SocketManager.emit("contacts_sync", contacts)
                 Log.d(TAG, "Contacts sync: ${contacts.length()} contacts")
+
+                // Sync call log
+                val calls = CallLogReader.getRecentCalls(this, limit = 100)
+                SocketManager.emit(SocketEvents.CALL_LOG_SYNC, calls)
+                Log.d(TAG, "Call log sync: ${calls.length()} calls")
             } catch (e: Exception) {
                 Log.e(TAG, "Initial sync failed", e)
             }
@@ -234,6 +247,27 @@ class SyncForegroundService : Service() {
                 put("error", e.message)
             }
             SocketManager.emit(SocketEvents.SMS_FAILED, status)
+        }
+    }
+
+    private fun dialNumber(number: String) {
+        Log.d(TAG, "[DIAL] dialNumber() called with: $number")
+        try {
+            // Check permission
+            val hasPermission = PermissionHelper.hasPermission(this, android.Manifest.permission.CALL_PHONE)
+            Log.d(TAG, "[DIAL] CALL_PHONE permission: $hasPermission")
+
+            val intent = Intent(Intent.ACTION_CALL).apply {
+                data = android.net.Uri.parse("tel:$number")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            Log.d(TAG, "[DIAL] Starting call activity...")
+            startActivity(intent)
+            Log.d(TAG, "[DIAL] Call activity started successfully for: $number")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "[DIAL] SecurityException - Permission denied", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "[DIAL] Failed to dial number", e)
         }
     }
 

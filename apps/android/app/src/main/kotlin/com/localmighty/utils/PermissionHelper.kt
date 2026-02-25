@@ -19,6 +19,8 @@ object PermissionHelper {
             Manifest.permission.SEND_SMS,
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.CALL_PHONE,
             Manifest.permission.POST_NOTIFICATIONS,
         )
     } else {
@@ -27,6 +29,8 @@ object PermissionHelper {
             Manifest.permission.SEND_SMS,
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.CALL_PHONE,
         )
     }
 
@@ -34,6 +38,10 @@ object PermissionHelper {
         return REQUIRED_PERMISSIONS.all {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
+    }
+
+    fun hasPermission(context: Context, permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
     fun getMissingPermissions(context: Context): List<String> {
