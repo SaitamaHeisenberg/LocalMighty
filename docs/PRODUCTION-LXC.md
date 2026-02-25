@@ -24,6 +24,13 @@
 
 ## Acces au Conteneur
 
+### Identifiants
+
+| Champ | Valeur |
+|-------|--------|
+| **Login** | root |
+| **Mot de passe** | LocalMighty2024 |
+
 ### Depuis le PC (SSH)
 
 ```bash
