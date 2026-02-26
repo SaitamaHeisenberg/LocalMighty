@@ -115,6 +115,26 @@ export function initializeDatabase() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_hub_text_history_created ON hub_text_history(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS hub_vault_meta (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      verification_blob TEXT,
+      salt TEXT,
+      created_at INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS hub_vault_entries (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      username TEXT NOT NULL DEFAULT '',
+      password_encrypted TEXT NOT NULL,
+      url TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hub_vault_entries_label ON hub_vault_entries(label);
   `);
 
   // Initialize device status row

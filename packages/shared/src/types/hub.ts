@@ -31,3 +31,21 @@ export interface HubTextHistoryEntry {
   authorIp: string;
   createdAt: number;
 }
+
+// Hub - Password vault
+export interface HubVaultEntry {
+  id: string;
+  label: string;
+  username: string;
+  passwordEncrypted: string;
+  url: string;
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface HubVaultMeta {
+  isSetup: boolean;
+  salt: string | null;
+  verificationBlob: string | null;
+}
