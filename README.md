@@ -14,6 +14,7 @@ Synchronisation SMS, appels et notifications entre Android et PC via Wi-Fi local
 - **Contacts** : Sync complete, recherche intelligente
 - **Batterie** : Niveau et etat de charge en temps reel
 - **Interface** : Mode clair/sombre, layout classique/moderne, mode compact
+- **Hub Partage** : Clipboard sync, glisser-deposer fichiers, coffre-fort mots de passe (chiffre), TOTP
 
 ## Stack Technique
 
@@ -82,7 +83,13 @@ adb install -r "apps/android/app/build/outputs/apk/debug/app-debug.apk"
                                       │  - calls        │
                                       │  - contacts     │
                                       │  - notifications│
+                                      │  - hub (vault)  │
                                       └─────────────────┘
+
+┌─────────────────┐     WebSocket     ┌─────────────────┐     WebSocket     ┌─────────────────┐
+│  Browser PC 1   │◄─────────────────►│  Node.js Server │◄─────────────────►│  Browser PC 2   │
+│  (Hub Partage)  │   /share ns       │  (Express)      │   /share ns       │  (Hub Partage)  │
+└─────────────────┘                   └─────────────────┘                   └─────────────────┘
 ```
 
 ## Configuration Xiaomi/HyperOS
@@ -130,6 +137,9 @@ pnpm build         # Build production
 | `GET /api/calls` | Historique des appels |
 | `GET /api/notifications` | Notifications |
 | `POST /api/auth/pair` | Generer token pairing |
+| `GET /api/hub/text` | Clipboard partage |
+| `POST /api/hub/upload` | Upload fichier (max 100 Mo) |
+| `GET /api/hub/vault/entries` | Entrees coffre-fort (chiffrees) |
 
 ## Roadmap
 
@@ -140,6 +150,10 @@ pnpm build         # Build production
 - [x] Mode compact
 - [x] Layouts chat (classique/moderne)
 - [x] Suppression conversations
+- [x] Hub Partage (clipboard, fichiers, historique)
+- [x] Coffre-fort mots de passe (chiffrement client-side)
+- [x] TOTP (2FA) dans le coffre-fort
+- [x] Envoi par SMS depuis le Hub
 - [ ] Multi-utilisateurs (authentification JWT)
 - [ ] Chiffrement E2E
 - [ ] Support MMS/images
