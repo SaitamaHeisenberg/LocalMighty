@@ -33,6 +33,13 @@ export interface HubFile {
   retention: HubFileRetention;
 }
 
+export interface HubTextHistoryEntry {
+  id: string;
+  content: string;
+  authorIp: string;
+  createdAt: number;
+}
+
 function getServerUrl(): string {
   if (!browser) return 'http://localhost:3001';
   const { hostname } = window.location;
@@ -45,6 +52,7 @@ function createHubStore() {
   const text = writable('');
   const syncStatus = writable<HubSyncStatus>('disconnected');
   const files = writable<HubFile[]>([]);
+  const textHistory = writable<HubTextHistoryEntry[]>([]);
   const uploading = writable(false);
   const uploadProgress = writable(0);
 
@@ -202,10 +210,40 @@ function createHubStore() {
     }
   }
 
+  // ===== Text history =====
+
+  async function loadTextHistory() {
+    try {
+      const res = await fetch(apiUrl('/api/hub/text/history'));
+      if (res.ok) {
+        const data: HubTextHistoryEntry[] = await res.json();
+        textHistory.set(data);
+      }
+    } catch (err) {
+      console.error('[HUB] Failed to load text history:', err);
+    }
+  }
+
+  function restoreFromHistory(entry: HubTextHistoryEntry) {
+    updateText(entry.content);
+  }
+
+  async function clearHistory() {
+    try {
+      const res = await fetch(apiUrl('/api/hub/text/history'), { method: 'DELETE' });
+      if (res.ok) {
+        textHistory.set([]);
+      }
+    } catch (err) {
+      console.error('[HUB] Failed to clear history:', err);
+    }
+  }
+
   return {
     text: { subscribe: text.subscribe },
     syncStatus: { subscribe: syncStatus.subscribe },
     files: { subscribe: files.subscribe },
+    textHistory: { subscribe: textHistory.subscribe },
     uploading: { subscribe: uploading.subscribe },
     uploadProgress: { subscribe: uploadProgress.subscribe },
     connect,
@@ -215,6 +253,9 @@ function createHubStore() {
     loadFiles,
     uploadFile,
     deleteFile,
+    loadTextHistory,
+    restoreFromHistory,
+    clearHistory,
   };
 }
 

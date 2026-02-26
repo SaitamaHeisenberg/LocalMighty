@@ -106,6 +106,15 @@ export function initializeDatabase() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_hub_files_created ON hub_files(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS hub_text_history (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL,
+      author_ip TEXT,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hub_text_history_created ON hub_text_history(created_at DESC);
   `);
 
   // Initialize device status row

@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { db, DATA_DIR } from '../config/database.js';
 import { SOCKET_EVENTS } from '@localmighty/shared';
 import type { HubFile } from '@localmighty/shared';
-import { getClipboard, updateClipboard } from '../socket/handlers/hub.js';
+import { getClipboard, updateClipboard, getTextHistory, clearTextHistory } from '../socket/handlers/hub.js';
 
 const router = Router();
 
@@ -79,6 +79,18 @@ router.put('/text', (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || '';
   const clipboard = updateClipboard(content, ip);
   res.json(clipboard);
+});
+
+// ===== Clipboard text history =====
+
+router.get('/text/history', (_req, res) => {
+  const history = getTextHistory();
+  res.json(history);
+});
+
+router.delete('/text/history', (_req, res) => {
+  clearTextHistory();
+  res.json({ success: true });
 });
 
 // ===== File upload =====

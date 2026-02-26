@@ -23,3 +23,11 @@ export interface HubFile {
 }
 
 export type HubFileRetention = '1h' | '24h' | '7d' | 'unlimited';
+
+// Hub - Text history
+export interface HubTextHistoryEntry {
+  id: string;
+  content: string;
+  authorIp: string;
+  createdAt: number;
+}
