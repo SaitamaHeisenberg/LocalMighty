@@ -38,6 +38,7 @@ export interface HubVaultEntry {
   label: string;
   username: string;
   passwordEncrypted: string;
+  totpSecretEncrypted: string;
   url: string;
   notes: string;
   createdAt: number;

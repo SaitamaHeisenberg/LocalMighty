@@ -175,6 +175,7 @@ function rowToVaultEntry(row: any): HubVaultEntry {
     label: row.label,
     username: row.username,
     passwordEncrypted: row.password_encrypted,
+    totpSecretEncrypted: row.totp_secret_encrypted || '',
     url: row.url,
     notes: row.notes,
     createdAt: row.created_at,
@@ -220,7 +221,7 @@ router.get('/vault/entries', (_req, res) => {
 
 // Create vault entry
 router.post('/vault/entries', (req, res) => {
-  const { label, username, passwordEncrypted, url, notes } = req.body;
+  const { label, username, passwordEncrypted, totpSecretEncrypted, url, notes } = req.body;
   if (!label || !passwordEncrypted) {
     return res.status(400).json({ error: 'label and passwordEncrypted required' });
   }
@@ -229,12 +230,13 @@ router.post('/vault/entries', (req, res) => {
   const now = Date.now();
 
   db.prepare(`
-    INSERT INTO hub_vault_entries (id, label, username, password_encrypted, url, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, label, username || '', passwordEncrypted, url || '', notes || '', now, now);
+    INSERT INTO hub_vault_entries (id, label, username, password_encrypted, totp_secret_encrypted, url, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, label, username || '', passwordEncrypted, totpSecretEncrypted || '', url || '', notes || '', now, now);
 
   const entry = rowToVaultEntry({
     id, label, username: username || '', password_encrypted: passwordEncrypted,
+    totp_secret_encrypted: totpSecretEncrypted || '',
     url: url || '', notes: notes || '', created_at: now, updated_at: now,
   });
 
@@ -255,16 +257,17 @@ router.put('/vault/entries/:id', (req, res) => {
     return res.status(404).json({ error: 'Entry not found' });
   }
 
-  const { label, username, passwordEncrypted, url, notes } = req.body;
+  const { label, username, passwordEncrypted, totpSecretEncrypted, url, notes } = req.body;
   const now = Date.now();
 
   db.prepare(`
-    UPDATE hub_vault_entries SET label = ?, username = ?, password_encrypted = ?, url = ?, notes = ?, updated_at = ?
+    UPDATE hub_vault_entries SET label = ?, username = ?, password_encrypted = ?, totp_secret_encrypted = ?, url = ?, notes = ?, updated_at = ?
     WHERE id = ?
-  `).run(label, username || '', passwordEncrypted, url || '', notes || '', now, id);
+  `).run(label, username || '', passwordEncrypted, totpSecretEncrypted || '', url || '', notes || '', now, id);
 
   const entry = rowToVaultEntry({
     id, label, username: username || '', password_encrypted: passwordEncrypted,
+    totp_secret_encrypted: totpSecretEncrypted || '',
     url: url || '', notes: notes || '', created_at: 0, updated_at: now,
   });
 

@@ -1,7 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { vaultStore, type DecryptedVaultEntry } from '$lib/stores/vault';
   import { generatePassword, DEFAULT_OPTIONS, type PasswordOptions } from '$lib/services/passwordGenerator';
+  import { generateTOTP, getTimeRemaining, isValidBase32 } from '$lib/services/totp';
+
+  const dispatch = createEventDispatcher<{
+    pasteToTextarea: { text: string };
+    sendSms: { text: string };
+  }>();
 
   // State
   let vaultSetup = false;
@@ -18,6 +25,7 @@
   let formLabel = '';
   let formUsername = '';
   let formPassword = '';
+  let formTotpSecret = '';
   let formUrl = '';
   let formNotes = '';
   let showPassword = false;
@@ -30,14 +38,23 @@
   // Visibility per entry
   let visiblePasswords: Set<string> = new Set();
 
+  // TOTP live codes
+  let totpCodes: Record<string, string> = {};
+  let totpRemaining = 30;
+  let totpInterval: ReturnType<typeof setInterval> | null = null;
+
   // Subscriptions
   const unsubSetup = vaultStore.isSetup.subscribe((v) => { vaultSetup = v; });
   const unsubUnlocked = vaultStore.isUnlocked.subscribe((v) => { vaultUnlocked = v; });
-  const unsubEntries = vaultStore.entries.subscribe((v) => { vaultEntries = v; });
+  const unsubEntries = vaultStore.entries.subscribe((v) => {
+    vaultEntries = v;
+    refreshTotpCodes();
+  });
   const unsubClip = vaultStore.clipboardTimer.subscribe((v) => { clipCountdown = v; });
 
   onMount(async () => {
     await vaultStore.checkSetup();
+    startTotpTimer();
   });
 
   onDestroy(() => {
@@ -46,7 +63,30 @@
     unsubEntries();
     unsubClip();
     vaultStore.clearClipboardTimer();
+    if (totpInterval) clearInterval(totpInterval);
   });
+
+  function startTotpTimer() {
+    totpInterval = setInterval(() => {
+      totpRemaining = getTimeRemaining();
+      if (totpRemaining === 30) {
+        refreshTotpCodes();
+      }
+    }, 1000);
+  }
+
+  function refreshTotpCodes() {
+    const codes: Record<string, string> = {};
+    for (const entry of vaultEntries) {
+      if (entry.totpSecret && isValidBase32(entry.totpSecret)) {
+        try {
+          codes[entry.id] = generateTOTP(entry.totpSecret);
+        } catch { /* skip */ }
+      }
+    }
+    totpCodes = codes;
+    totpRemaining = getTimeRemaining();
+  }
 
   // Setup vault
   async function handleSetup() {
@@ -79,6 +119,7 @@
   function handleLock() {
     vaultStore.lock();
     visiblePasswords = new Set();
+    totpCodes = {};
   }
 
   // Open new entry form
@@ -87,6 +128,7 @@
     formLabel = '';
     formUsername = '';
     formPassword = '';
+    formTotpSecret = '';
     formUrl = '';
     formNotes = '';
     showPassword = false;
@@ -99,6 +141,7 @@
     formLabel = entry.label;
     formUsername = entry.username;
     formPassword = entry.password;
+    formTotpSecret = entry.totpSecret;
     formUrl = entry.url;
     formNotes = entry.notes;
     showPassword = false;
@@ -113,6 +156,7 @@
       label: formLabel.trim(),
       username: formUsername.trim(),
       password: formPassword,
+      totpSecret: formTotpSecret.replace(/\s/g, '').toUpperCase(),
       url: formUrl.trim(),
       notes: formNotes.trim(),
     };
@@ -126,6 +170,7 @@
 
     if (ok) {
       showForm = false;
+      refreshTotpCodes();
     }
   }
 
@@ -143,20 +188,29 @@
     await vaultStore.copyPassword(password);
   }
 
+  // Copy TOTP code
+  let copiedTotp: string | null = null;
+  let totpCopyTimeout: ReturnType<typeof setTimeout> | null = null;
+  async function copyTotpCode(code: string, id: string) {
+    try { await navigator.clipboard.writeText(code); } catch {
+      const ta = document.createElement('textarea');
+      ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    copiedTotp = id;
+    if (totpCopyTimeout) clearTimeout(totpCopyTimeout);
+    totpCopyTimeout = setTimeout(() => { copiedTotp = null; }, 2000);
+  }
+
   // Copy username
   let copiedUsername: string | null = null;
   let usernameCopyTimeout: ReturnType<typeof setTimeout> | null = null;
   async function copyUser(username: string, id: string) {
-    try {
-      await navigator.clipboard.writeText(username);
-    } catch {
+    try { await navigator.clipboard.writeText(username); } catch {
       const ta = document.createElement('textarea');
-      ta.value = username;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
+      ta.value = username; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
       document.body.removeChild(ta);
     }
     copiedUsername = id;
@@ -171,7 +225,7 @@
     } else {
       visiblePasswords.add(id);
     }
-    visiblePasswords = visiblePasswords; // trigger reactivity
+    visiblePasswords = visiblePasswords;
   }
 
   // Password generator
@@ -182,6 +236,16 @@
 
   function regenerate() {
     formPassword = generatePassword(genOptions);
+  }
+
+  // EF-4.7: Paste password to hub textarea
+  function pasteToTextarea(text: string) {
+    dispatch('pasteToTextarea', { text });
+  }
+
+  // EF-5.3: Send via SMS
+  function sendViaSms(text: string) {
+    dispatch('sendSms', { text });
   }
 
   // Filter entries
@@ -376,6 +440,9 @@
           </div>
         {/if}
 
+        <!-- TOTP secret -->
+        <input bind:value={formTotpSecret} placeholder="Secret TOTP (base32, optionnel)" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+
         <div class="flex gap-2">
           <input bind:value={formUrl} placeholder="URL (optionnel)" class="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500" />
         </div>
@@ -484,7 +551,57 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
                       </svg>
                     </button>
+                    <!-- Paste to textarea -->
+                    <button
+                      on:click={() => pasteToTextarea(entry.password)}
+                      class="p-0.5 rounded text-gray-300 hover:text-green-500 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Coller dans le textarea Hub"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </button>
+                    <!-- Send via SMS -->
+                    <button
+                      on:click={() => sendViaSms(entry.password)}
+                      class="p-0.5 rounded text-gray-300 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Envoyer par SMS"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
                   </div>
+
+                  <!-- TOTP code -->
+                  {#if totpCodes[entry.id]}
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800">
+                        <span class="text-sm font-mono font-bold text-indigo-700 dark:text-indigo-300 tracking-widest">
+                          {totpCodes[entry.id].slice(0, 3)} {totpCodes[entry.id].slice(3)}
+                        </span>
+                        <svg class="w-3 h-3 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <circle cx="12" cy="12" r="10" stroke-width="2" stroke-dasharray="{(totpRemaining / 30) * 62.83}" stroke-dashoffset="0" transform="rotate(-90 12 12)" class="transition-all duration-1000" />
+                        </svg>
+                        <span class="text-[10px] text-indigo-400">{totpRemaining}s</span>
+                      </div>
+                      <button
+                        on:click={() => copyTotpCode(totpCodes[entry.id], entry.id)}
+                        class="p-0.5 rounded text-gray-300 hover:text-indigo-500 transition-colors"
+                        title="Copier le code TOTP"
+                      >
+                        {#if copiedTotp === entry.id}
+                          <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        {:else}
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        {/if}
+                      </button>
+                    </div>
+                  {/if}
 
                   {#if entry.notes}
                     <p class="text-[10px] text-gray-400 mt-1 truncate">{entry.notes}</p>

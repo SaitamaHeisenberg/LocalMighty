@@ -161,6 +161,23 @@ LocalMighty/
 | Recherche globale | ✅ | Dans tous les SMS |
 | Suppression conv | ✅ | Delete thread depuis UI |
 
+### Hub de Partage Local
+
+Module independant du telephone, fonctionnant entre tous les navigateurs du reseau local.
+
+| Fonctionnalite | Status | Description |
+|----------------|--------|-------------|
+| Live Text Area | ✅ | Textarea synchronisee en temps reel via Socket.io namespace /share |
+| File Drop | ✅ | Glisser-deposer fichiers, URLs locales, retention configurable (1h/24h/7d/illimite) |
+| Historique texte | ✅ | 10 derniers etats du clipboard, restauration en un clic |
+| Coffre-fort | ✅ | Stockage securise mots de passe, chiffrement client-side AES-CBC + PBKDF2 |
+| TOTP (2FA) | ✅ | Codes TOTP en temps reel (RFC 6238), copie en un clic |
+| Generateur MdP | ✅ | Longueur + options (maj/min/chiffres/symboles), crypto.getRandomValues |
+| Auto-clear clipboard | ✅ | Effacement automatique du presse-papier apres 30 secondes |
+| Coller dans textarea | ✅ | Transfert mot de passe du coffre vers le textarea partage |
+| Envoyer par SMS | ✅ | Envoi d'un mot de passe par SMS depuis le coffre-fort |
+| Sync temps reel | ✅ | WebSocket entre onglets pour texte, fichiers et vault |
+
 ---
 
 ## Fonctionnalites manquantes
@@ -418,6 +435,47 @@ Rejette toutes les notifications.
 #### DELETE /api/notifications/cleanup
 Supprime les notifications > 7 jours dismissees.
 
+### Hub Partage
+
+#### GET /api/hub/text
+Contenu du clipboard partage.
+
+#### PUT /api/hub/text
+Met a jour le clipboard (`{ content: string }`). Limite 10 Ko.
+
+#### GET /api/hub/text/history
+10 derniers etats du clipboard.
+
+#### DELETE /api/hub/text/history
+Efface l'historique.
+
+#### POST /api/hub/upload
+Upload fichier (multipart, max 100 Mo). Body: `file` + `retention` (1h/24h/7d/unlimited).
+
+#### GET /api/hub/files
+Liste des fichiers non expires.
+
+#### DELETE /api/hub/files/:id
+Supprime un fichier.
+
+#### GET /api/hub/vault/meta
+Salt + verification blob du coffre-fort.
+
+#### POST /api/hub/vault/setup
+Initialise le coffre-fort (`{ salt, verificationBlob }`).
+
+#### GET /api/hub/vault/entries
+Liste les entrees (passwords chiffres).
+
+#### POST /api/hub/vault/entries
+Cree une entree (`{ label, username, passwordEncrypted, totpSecretEncrypted, url, notes }`).
+
+#### PUT /api/hub/vault/entries/:id
+Modifie une entree.
+
+#### DELETE /api/hub/vault/entries/:id
+Supprime une entree.
+
 ---
 
 ## Socket Events
@@ -470,6 +528,19 @@ Supprime les notifications > 7 jours dismissees.
 | Event | Payload | Description |
 |-------|---------|-------------|
 | `join` | `"web-clients"` | Rejoindre la room web |
+
+### Hub /share Namespace
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `hub:text:update` | `{content}` | Mise a jour du clipboard |
+| `hub:text:request` | - | Demande du contenu actuel |
+| `hub:text:sync` | `HubText` | Sync du clipboard |
+| `hub:file:new` | `HubFile` | Nouveau fichier uploade |
+| `hub:file:deleted` | `{id}` | Fichier supprime |
+| `hub:vault:new` | `HubVaultEntry` | Nouvelle entree coffre-fort |
+| `hub:vault:updated` | `HubVaultEntry` | Entree modifiee |
+| `hub:vault:deleted` | `{id}` | Entree supprimee |
 
 ---
 

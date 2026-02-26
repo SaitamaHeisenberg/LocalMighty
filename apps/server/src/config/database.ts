@@ -128,6 +128,7 @@ export function initializeDatabase() {
       label TEXT NOT NULL,
       username TEXT NOT NULL DEFAULT '',
       password_encrypted TEXT NOT NULL,
+      totp_secret_encrypted TEXT DEFAULT '',
       url TEXT DEFAULT '',
       notes TEXT DEFAULT '',
       created_at INTEGER NOT NULL,
@@ -147,6 +148,13 @@ export function initializeDatabase() {
   const hubRow = db.prepare('SELECT id FROM hub_clipboard WHERE id = 1').get();
   if (!hubRow) {
     db.prepare('INSERT INTO hub_clipboard (id, content, author_ip, updated_at) VALUES (1, \'\', \'\', 0)').run();
+  }
+
+  // Migration: add totp_secret_encrypted column if missing
+  try {
+    db.prepare('SELECT totp_secret_encrypted FROM hub_vault_entries LIMIT 1').get();
+  } catch {
+    db.exec("ALTER TABLE hub_vault_entries ADD COLUMN totp_secret_encrypted TEXT DEFAULT ''");
   }
 
   console.log('Database initialized at:', DB_PATH);

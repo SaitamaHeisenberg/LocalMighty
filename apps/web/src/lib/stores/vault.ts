@@ -16,6 +16,7 @@ export interface VaultEntry {
   label: string;
   username: string;
   passwordEncrypted: string;
+  totpSecretEncrypted: string;
   url: string;
   notes: string;
   createdAt: number;
@@ -27,6 +28,7 @@ export interface DecryptedVaultEntry {
   label: string;
   username: string;
   password: string; // decrypted
+  totpSecret: string; // decrypted
   url: string;
   notes: string;
   createdAt: number;
@@ -132,9 +134,13 @@ function createVaultStore() {
       for (const entry of rawEntries) {
         try {
           const password = decrypt(entry.passwordEncrypted, keyHex!);
-          decrypted.push({ ...entry, password });
+          let totpSecret = '';
+          if (entry.totpSecretEncrypted) {
+            try { totpSecret = decrypt(entry.totpSecretEncrypted, keyHex!); } catch {}
+          }
+          decrypted.push({ ...entry, password, totpSecret });
         } catch {
-          decrypted.push({ ...entry, password: '*** erreur dechiffrement ***' });
+          decrypted.push({ ...entry, password: '*** erreur dechiffrement ***', totpSecret: '' });
         }
       }
       entries.set(decrypted);
@@ -143,10 +149,11 @@ function createVaultStore() {
     }
   }
 
-  async function addEntry(data: { label: string; username: string; password: string; url: string; notes: string }): Promise<boolean> {
+  async function addEntry(data: { label: string; username: string; password: string; totpSecret: string; url: string; notes: string }): Promise<boolean> {
     if (!keyHex) return false;
     try {
       const passwordEncrypted = encrypt(data.password, keyHex);
+      const totpSecretEncrypted = data.totpSecret ? encrypt(data.totpSecret, keyHex) : '';
       const res = await fetch(apiUrl('/api/hub/vault/entries'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,6 +161,7 @@ function createVaultStore() {
           label: data.label,
           username: data.username,
           passwordEncrypted,
+          totpSecretEncrypted,
           url: data.url,
           notes: data.notes,
         }),
@@ -161,7 +169,7 @@ function createVaultStore() {
 
       if (res.ok) {
         const entry: VaultEntry = await res.json();
-        entries.update((list) => [...list, { ...entry, password: data.password }]);
+        entries.update((list) => [...list, { ...entry, password: data.password, totpSecret: data.totpSecret }]);
         return true;
       }
     } catch (err) {
@@ -170,10 +178,11 @@ function createVaultStore() {
     return false;
   }
 
-  async function updateEntry(id: string, data: { label: string; username: string; password: string; url: string; notes: string }): Promise<boolean> {
+  async function updateEntry(id: string, data: { label: string; username: string; password: string; totpSecret: string; url: string; notes: string }): Promise<boolean> {
     if (!keyHex) return false;
     try {
       const passwordEncrypted = encrypt(data.password, keyHex);
+      const totpSecretEncrypted = data.totpSecret ? encrypt(data.totpSecret, keyHex) : '';
       const res = await fetch(apiUrl(`/api/hub/vault/entries/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -181,6 +190,7 @@ function createVaultStore() {
           label: data.label,
           username: data.username,
           passwordEncrypted,
+          totpSecretEncrypted,
           url: data.url,
           notes: data.notes,
         }),
@@ -265,14 +275,18 @@ function createVaultStore() {
     if (event === VAULT_EVENTS.NEW || event === VAULT_EVENTS.UPDATED) {
       try {
         const password = decrypt(data.passwordEncrypted, keyHex!);
+        let totpSecret = '';
+        if (data.totpSecretEncrypted) {
+          try { totpSecret = decrypt(data.totpSecretEncrypted, keyHex!); } catch {}
+        }
         if (event === VAULT_EVENTS.NEW) {
           entries.update((list) => {
             if (list.some((e) => e.id === data.id)) return list;
-            return [...list, { ...data, password }];
+            return [...list, { ...data, password, totpSecret }];
           });
         } else {
           entries.update((list) => list.map((e) =>
-            e.id === data.id ? { ...data, password } : e
+            e.id === data.id ? { ...data, password, totpSecret } : e
           ));
         }
       } catch {
