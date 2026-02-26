@@ -45,7 +45,7 @@ function createVaultStore() {
   const isUnlocked = writable(false);
   const clipboardTimer = writable(0);
 
-  let cryptoKey: CryptoKey | null = null;
+  let keyHex: string | null = null;
   let clipboardInterval: ReturnType<typeof setInterval> | null = null;
   let clipboardClearTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -68,8 +68,8 @@ function createVaultStore() {
   async function setupVault(masterPassword: string): Promise<boolean> {
     try {
       const salt = generateSalt();
-      const key = await deriveKey(masterPassword, salt);
-      const verificationBlob = await createVerification(key);
+      const key = deriveKey(masterPassword, salt);
+      const verificationBlob = createVerification(key);
 
       const res = await fetch(apiUrl('/api/hub/vault/setup'), {
         method: 'POST',
@@ -78,7 +78,7 @@ function createVaultStore() {
       });
 
       if (res.ok) {
-        cryptoKey = key;
+        keyHex = key;
         isSetup.set(true);
         isUnlocked.set(true);
         entries.set([]);
@@ -98,11 +98,11 @@ function createVaultStore() {
       const meta = await res.json();
       if (!meta.isSetup) return false;
 
-      const key = await deriveKey(masterPassword, meta.salt);
-      const valid = await verifyMasterPassword(key, meta.verificationBlob);
+      const key = deriveKey(masterPassword, meta.salt);
+      const valid = verifyMasterPassword(key, meta.verificationBlob);
       if (!valid) return false;
 
-      cryptoKey = key;
+      keyHex = key;
       isUnlocked.set(true);
 
       // Load and decrypt entries
@@ -115,14 +115,14 @@ function createVaultStore() {
   }
 
   function lock() {
-    cryptoKey = null;
+    keyHex = null;
     isUnlocked.set(false);
     entries.set([]);
     clearClipboardTimer();
   }
 
   async function loadEntries() {
-    if (!cryptoKey) return;
+    if (!keyHex) return;
     try {
       const res = await fetch(apiUrl('/api/hub/vault/entries'));
       if (!res.ok) return;
@@ -131,10 +131,9 @@ function createVaultStore() {
       const decrypted: DecryptedVaultEntry[] = [];
       for (const entry of rawEntries) {
         try {
-          const password = await decrypt(entry.passwordEncrypted, cryptoKey!);
+          const password = decrypt(entry.passwordEncrypted, keyHex!);
           decrypted.push({ ...entry, password });
         } catch {
-          // Can't decrypt - maybe different master password was used
           decrypted.push({ ...entry, password: '*** erreur dechiffrement ***' });
         }
       }
@@ -145,9 +144,9 @@ function createVaultStore() {
   }
 
   async function addEntry(data: { label: string; username: string; password: string; url: string; notes: string }): Promise<boolean> {
-    if (!cryptoKey) return false;
+    if (!keyHex) return false;
     try {
-      const passwordEncrypted = await encrypt(data.password, cryptoKey);
+      const passwordEncrypted = encrypt(data.password, keyHex);
       const res = await fetch(apiUrl('/api/hub/vault/entries'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -172,9 +171,9 @@ function createVaultStore() {
   }
 
   async function updateEntry(id: string, data: { label: string; username: string; password: string; url: string; notes: string }): Promise<boolean> {
-    if (!cryptoKey) return false;
+    if (!keyHex) return false;
     try {
-      const passwordEncrypted = await encrypt(data.password, cryptoKey);
+      const passwordEncrypted = encrypt(data.password, keyHex);
       const res = await fetch(apiUrl(`/api/hub/vault/entries/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -261,11 +260,11 @@ function createVaultStore() {
 
   // Listen for real-time vault events from hub socket
   function handleSocketEvent(event: string, data: any) {
-    if (!cryptoKey) return;
+    if (!keyHex) return;
 
     if (event === VAULT_EVENTS.NEW || event === VAULT_EVENTS.UPDATED) {
-      // Re-decrypt the entry
-      decrypt(data.passwordEncrypted, cryptoKey!).then((password) => {
+      try {
+        const password = decrypt(data.passwordEncrypted, keyHex!);
         if (event === VAULT_EVENTS.NEW) {
           entries.update((list) => {
             if (list.some((e) => e.id === data.id)) return list;
@@ -276,7 +275,9 @@ function createVaultStore() {
             e.id === data.id ? { ...data, password } : e
           ));
         }
-      }).catch(() => {});
+      } catch {
+        // Can't decrypt
+      }
     } else if (event === VAULT_EVENTS.DELETED) {
       entries.update((list) => list.filter((e) => e.id !== data.id));
     }

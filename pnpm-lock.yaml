@@ -84,6 +84,9 @@ importers:
 
   apps/web:
     dependencies:
+      crypto-js:
+        specifier: ^4.2.0
+        version: 4.2.0
       socket.io-client:
         specifier: ^4.7.4
         version: 4.8.3
@@ -97,6 +100,9 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^3.0.2
         version: 3.1.2(svelte@4.2.20)(vite@5.4.21)
+      '@types/crypto-js':
+        specifier: ^4.2.2
+        version: 4.2.2
       autoprefixer:
         specifier: ^10.4.18
         version: 10.4.24(postcss@8.5.6)
@@ -1026,6 +1032,10 @@ packages:
     dependencies:
       '@types/node': 20.19.33
 
+  /@types/crypto-js@4.2.2:
+    resolution: {integrity: sha512-sDOLlVbHhXpAUAL0YHDUUwDZf3iN4Bwi4W6a0W0b+QcAezUbRtH4FVb+9J4h+XFPW7l/gQ9F8qC7P+Ec4k8QVQ==}
+    dev: true
+
   /@types/estree@1.0.8:
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
     dev: true
@@ -1407,6 +1417,10 @@ packages:
     dependencies:
       object-assign: 4.1.1
       vary: 1.1.2
+    dev: false
+
+  /crypto-js@4.2.0:
+    resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
     dev: false
 
   /css-tree@2.3.1:
