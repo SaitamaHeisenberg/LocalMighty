@@ -3,6 +3,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [sveltekit()],
+  ssr: {
+    noExternal: ['crypto-js'],
+  },
   server: {
     port: 5173,
     proxy: {
