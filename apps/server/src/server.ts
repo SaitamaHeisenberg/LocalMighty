@@ -16,7 +16,9 @@ import hubRouter from './routes/hub.js';
 import { authMiddleware } from './middleware/auth.js';
 import { setupHubHandlers } from './socket/handlers/hub.js';
 import { startMdnsAdvertisement } from './services/mdns.js';
+import { startHubCleanup } from './services/hubCleanup.js';
 import { getLocalIpAddress } from './utils/network.js';
+import { UPLOADS_DIR } from './routes/hub.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,6 +77,12 @@ setupSocketHandlers(io);
 const shareNs = io.of('/share');
 setupHubHandlers(shareNs);
 
+// Expose shareNs to routes (for file upload/delete broadcasts)
+app.locals.shareNs = shareNs;
+
+// Serve uploaded hub files as static assets
+app.use('/hub/files', express.static(UPLOADS_DIR));
+
 // Load SvelteKit handler
 async function loadSvelteKitHandler() {
   const webBuildPath = path.resolve(__dirname, '../web-build');
@@ -100,6 +108,9 @@ async function loadSvelteKitHandler() {
 
 export async function startServer(port: number = 3001) {
   initializeDatabase();
+
+  // Start hub file cleanup timer (removes expired files every 5 min)
+  startHubCleanup(shareNs);
 
   // Load SvelteKit handler before starting server
   await loadSvelteKitHandler();

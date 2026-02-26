@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '../../data');
+export const DATA_DIR = path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'localmighty.db');
 
 // Ensure data directory exists
@@ -92,6 +92,20 @@ export function initializeDatabase() {
       author_ip TEXT,
       updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
     );
+
+    CREATE TABLE IF NOT EXISTS hub_files (
+      id TEXT PRIMARY KEY,
+      original_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      stored_name TEXT NOT NULL,
+      uploader_ip TEXT,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER,
+      retention TEXT DEFAULT '24h'
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hub_files_created ON hub_files(created_at DESC);
   `);
 
   // Initialize device status row

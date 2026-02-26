@@ -41,6 +41,8 @@ export const SOCKET_EVENTS = {
   HUB_TEXT_UPDATE: 'hub:text:update',
   HUB_TEXT_REQUEST: 'hub:text:request',
   HUB_TEXT_SYNC: 'hub:text:sync',
+  HUB_FILE_NEW: 'hub:file:new',
+  HUB_FILE_DELETED: 'hub:file:deleted',
 } as const;
 
 export type SocketEvent = typeof SOCKET_EVENTS[keyof typeof SOCKET_EVENTS];
