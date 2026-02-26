@@ -73,6 +73,25 @@ router.get('/thread/:threadId', (req, res) => {
   res.json(messages.reverse()); // Return in chronological order
 });
 
+// Get stats (must be before /:id to avoid conflict)
+router.get('/stats', (_req, res) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const stats = db.prepare(`
+    SELECT
+      COUNT(*) as totalMessages,
+      SUM(CASE WHEN date >= ? THEN 1 ELSE 0 END) as todayMessages,
+      SUM(CASE WHEN date >= ? THEN 1 ELSE 0 END) as weekMessages
+    FROM messages
+  `).get(todayStart.getTime(), weekStart.getTime()) as { totalMessages: number; todayMessages: number; weekMessages: number };
+
+  res.json(stats);
+});
+
 // Search messages (must be before /:id to avoid conflict)
 router.get('/search', (req, res) => {
   const q = req.query.q as string;
@@ -142,17 +161,18 @@ router.post('/thread/:threadId/read', (req, res) => {
   res.json({ success: true });
 });
 
-// Get stats
-router.get('/stats', (_req, res) => {
-  const stats = db.prepare(`
-    SELECT
-      COUNT(*) as totalMessages,
-      COUNT(DISTINCT thread_id) as totalThreads,
-      SUM(CASE WHEN read = 0 AND type = 'inbox' THEN 1 ELSE 0 END) as unreadCount
-    FROM messages
-  `).get();
+// Delete thread (conversation)
+router.delete('/thread/:threadId', (req, res) => {
+  const { threadId } = req.params;
 
-  res.json(stats);
+  const result = db.prepare('DELETE FROM messages WHERE thread_id = ?').run(threadId);
+
+  if (result.changes > 0) {
+    console.log(`Deleted thread ${threadId} (${result.changes} messages)`);
+    res.json({ success: true, deletedCount: result.changes });
+  } else {
+    res.status(404).json({ error: 'Thread not found' });
+  }
 });
 
 export default router;

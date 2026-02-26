@@ -1,119 +1,148 @@
 # LocalMighty
 
-Synchronisation SMS et notifications entre Android et PC via Wi-Fi local.
+Synchronisation SMS, appels et notifications entre Android et PC via Wi-Fi local.
 
 [![GitHub](https://img.shields.io/github/license/SaitamaHeisenberg/LocalMighty)](LICENSE)
 
 > **Documentation complete** : [DOCUMENTATION.md](DOCUMENTATION.md)
 
-## Structure du projet
+## Fonctionnalites
+
+- **SMS** : Sync temps reel, envoi depuis PC, envoi en masse, suivi livraison
+- **Appels** : Historique complet, appels depuis PC, filtre par type
+- **Notifications** : Mirroring, reponses directes, filtrage par app
+- **Contacts** : Sync complete, recherche intelligente
+- **Batterie** : Niveau et etat de charge en temps reel
+- **Interface** : Mode clair/sombre, layout classique/moderne, mode compact
+
+## Stack Technique
+
+| Composant | Technologies |
+|-----------|--------------|
+| Android | Kotlin, Jetpack Compose, Socket.io-client |
+| Serveur | Node.js, Express, Socket.io, SQLite |
+| Web | SvelteKit, Tailwind CSS, Socket.io-client |
+| Partage | TypeScript (types + events) |
+
+## Structure
 
 ```
 LocalMighty/
 ├── apps/
-│   ├── server/     # Backend Node.js (Express + Socket.io + SQLite)
-│   ├── web/        # Dashboard SvelteKit
-│   └── android/    # Application Android (Kotlin + Compose)
+│   ├── android/     # App Android (Kotlin + Compose)
+│   ├── server/      # Backend (Node.js + SQLite)
+│   └── web/         # Dashboard (SvelteKit)
 └── packages/
-    └── shared/     # Types TypeScript partages
+    └── shared/      # Types TypeScript partages
 ```
 
-## Prerequis
+## Installation Rapide
 
-- **Node.js** 18+
-- **pnpm** 8+
-- **Android Studio** (pour l'app Android)
-- Telephone et PC sur le **meme reseau Wi-Fi**
+### Prerequis
 
-## Installation
+- Node.js 18+
+- pnpm 8+
+- Android Studio (pour l'app Android)
+- Telephone et PC sur le meme reseau Wi-Fi
 
-### 1. Installer les dependances
+### 1. Serveur + Dashboard
 
 ```bash
 pnpm install
+pnpm dev           # Lance serveur (3001) + web (5173)
 ```
 
-### 2. Lancer le serveur
+### 2. Application Android
 
-```bash
-pnpm dev:server
+```powershell
+# Build APK
+powershell -NoProfile -ExecutionPolicy Bypass -File "apps/android/build_apk.ps1"
+
+# Installer sur telephone
+adb install -r "apps/android/app/build/outputs/apk/debug/app-debug.apk"
 ```
 
-Le serveur affichera son adresse IP locale (ex: `http://192.168.1.100:3001`).
+### 3. Connexion
 
-### 3. Lancer le dashboard web
+1. Ouvrir http://localhost:5173 dans le navigateur
+2. Dans l'app Android, entrer l'IP du PC et port 3001
+3. Appuyer sur "Connecter"
 
-```bash
-pnpm dev:web
+## Architecture
+
+```
+┌─────────────────┐     WebSocket     ┌─────────────────┐     WebSocket     ┌─────────────────┐
+│  Android App    │◄─────────────────►│  Node.js Server │◄─────────────────►│  SvelteKit Web  │
+│  (Kotlin/Compose)│                   │  (Express)      │                   │  (Dashboard)    │
+└─────────────────┘                   └────────┬────────┘                   └─────────────────┘
+                                               │
+                                      ┌────────▼────────┐
+                                      │     SQLite      │
+                                      │  - messages     │
+                                      │  - calls        │
+                                      │  - contacts     │
+                                      │  - notifications│
+                                      └─────────────────┘
 ```
 
-Ouvrir http://localhost:5173 dans un navigateur.
-
-### 4. Installer l'app Android
-
-1. Ouvrir `apps/android` dans Android Studio
-2. Connecter votre telephone en mode debug USB
-3. Build & Run l'application
-4. Dans l'app, entrer l'IP du serveur et appuyer sur "Connecter"
-
-## Configuration Android
-
-### Permissions requises
-
-- **SMS** : Lecture et envoi de SMS
-- **Notifications** : Acces au service de notifications
-- **Internet** : Communication avec le serveur
-
-### Xiaomi/HyperOS
+## Configuration Xiaomi/HyperOS
 
 Pour que l'app fonctionne en arriere-plan :
 
-1. Ouvrir **Securite** > **Autostart** > Activer LocalMighty
+1. **Securite** > **Autostart** > Activer LocalMighty
 2. **Parametres** > **Apps** > **LocalMighty** > **Batterie** > "Aucune restriction"
 3. Verrouiller l'app dans les taches recentes
 
-## Fonctionnalites
+## Permissions Android
 
-- Synchronisation SMS en temps reel (<5s)
-- Envoi de SMS depuis le PC
-- Mirroring des notifications
-- Affichage batterie du telephone
-- Interface web responsive
+| Permission | Usage |
+|------------|-------|
+| READ_SMS, SEND_SMS, RECEIVE_SMS | Lecture et envoi de SMS |
+| READ_CONTACTS | Synchronisation des contacts |
+| READ_CALL_LOG, CALL_PHONE | Historique et appels depuis PC |
+| NotificationListener | Mirroring des notifications |
+| FOREGROUND_SERVICE | Sync en arriere-plan |
 
 ## Securite
 
 - Communication locale uniquement (pas d'Internet)
-- Authentification par token
+- Authentification par token UUID
+- HTTP autorise uniquement sur IP privees (10.x, 172.16.x, 192.168.x)
 - Donnees stockees localement (SQLite)
 
 ## Developpement
 
 ```bash
-# Tous les services en parallele
-pnpm dev
-
-# Serveur uniquement
-pnpm dev:server
-
-# Dashboard uniquement
-pnpm dev:web
-
-# Build
-pnpm build
+pnpm dev           # Tous les services
+pnpm dev:server    # Serveur uniquement (port 3001)
+pnpm dev:web       # Dashboard uniquement (port 5173)
+pnpm build         # Build production
 ```
 
-## Architecture
+## API Endpoints
 
-```
-Android App ←──WebSocket──→ Node.js Server ←──WebSocket──→ SvelteKit Dashboard
-     │                           │
-     │                           ├── SQLite (messages, notifications)
-     │                           └── mDNS Discovery
-     │
-     ├── SmsContentObserver (SMS entrants/sortants)
-     ├── NotificationListenerService (notifications)
-     └── ForegroundService (execution en arriere-plan)
-```
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/messages/threads` | Liste des conversations |
+| `GET /api/messages/thread/:id` | Messages d'une conversation |
+| `DELETE /api/messages/thread/:id` | Supprimer conversation |
+| `GET /api/contacts` | Liste des contacts |
+| `GET /api/calls` | Historique des appels |
+| `GET /api/notifications` | Notifications |
+| `POST /api/auth/pair` | Generer token pairing |
+
+## Roadmap
+
+- [x] SMS sync + envoi + bulk
+- [x] Historique appels + dial depuis PC
+- [x] Sync contacts
+- [x] Notifications + reponses
+- [x] Mode compact
+- [x] Layouts chat (classique/moderne)
+- [x] Suppression conversations
+- [ ] Multi-utilisateurs (authentification JWT)
+- [ ] Chiffrement E2E
+- [ ] Support MMS/images
 
 ## License
 

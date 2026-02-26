@@ -85,12 +85,25 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_messages_address ON messages(address);
     CREATE INDEX IF NOT EXISTS idx_notifications_timestamp ON notifications(timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_notifications_package ON notifications(package_name);
+
+    CREATE TABLE IF NOT EXISTS hub_clipboard (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      content TEXT DEFAULT '',
+      author_ip TEXT,
+      updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+    );
   `);
 
   // Initialize device status row
   const existing = db.prepare('SELECT id FROM device_status WHERE id = 1').get();
   if (!existing) {
     db.prepare('INSERT INTO device_status (id, battery_level, is_charging, wifi_connected, last_seen) VALUES (1, 0, 0, 0, 0)').run();
+  }
+
+  // Initialize hub clipboard row
+  const hubRow = db.prepare('SELECT id FROM hub_clipboard WHERE id = 1').get();
+  if (!hubRow) {
+    db.prepare('INSERT INTO hub_clipboard (id, content, author_ip, updated_at) VALUES (1, \'\', \'\', 0)').run();
   }
 
   console.log('Database initialized at:', DB_PATH);

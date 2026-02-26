@@ -1,11 +1,14 @@
 <script lang="ts">
   import { threadsStore, messagesStore, type SmsThread, type SmsMessage } from '$lib/stores/messages';
-  import { chatLayoutStore, modernThemeStore } from '$lib/stores/chatLayout';
+  import { chatLayoutStore, modernThemeStore, compactModeStore } from '$lib/stores/chatLayout';
   import { smsStatusStore, type SmsDeliveryStatus } from '$lib/stores/smsStatus';
   import { formatRelativeTime, formatPhoneNumber, formatTime, truncate } from '$lib/utils/formatters';
   import { socketStore } from '$lib/stores/socket';
   import { toast } from '$lib/stores/toast';
   import { onMount } from 'svelte';
+  import { notificationSound } from '$lib/services/notificationSound';
+  import TemplateSelector from './TemplateSelector.svelte';
+  import { exportService, type ExportFormat } from '$lib/services/exportService';
 
   // Get status for a message
   function getStatus(messageId: string): SmsDeliveryStatus | undefined {
@@ -21,6 +24,16 @@
   let selectedThread: SmsThread | null = null;
   let messagesContainer: HTMLDivElement;
   let replyMessage = '';
+  let soundEnabled = notificationSound.isEnabled();
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    notificationSound.setEnabled(soundEnabled);
+    // Play a test sound when enabling
+    if (soundEnabled) {
+      notificationSound.play();
+    }
+  }
 
   onMount(async () => {
     await threadsStore.load();
@@ -83,6 +96,87 @@
     }
   }
 
+  function handleTemplateSelect(e: CustomEvent<string>) {
+    replyMessage = e.detail;
+  }
+
+  function callNumber() {
+    if (!selectedThread) return;
+
+    const socket = socketStore.getSocket();
+    if (socket) {
+      socket.emit('dial_number', { number: selectedThread.address });
+      toast('Appel en cours...', 'success');
+    } else {
+      toast('Non connecte au telephone', 'error');
+    }
+  }
+
+  function copyNumber() {
+    if (!selectedThread) return;
+    const text = selectedThread.address;
+
+    // Try modern clipboard API first, fallback to execCommand
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        toast('Numero copie', 'success');
+      }).catch(() => {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text: string) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      toast('Numero copie', 'success');
+    } catch {
+      toast('Erreur lors de la copie', 'error');
+    }
+    document.body.removeChild(textarea);
+  }
+
+  let showDeleteConfirm = false;
+  let deleting = false;
+
+  async function deleteConversation() {
+    if (!selectedThread || deleting) return;
+
+    deleting = true;
+    try {
+      const success = await threadsStore.deleteThread(selectedThread.threadId);
+      if (success) {
+        toast('Conversation supprimee', 'success');
+        selectedThread = null;
+      } else {
+        toast('Erreur lors de la suppression', 'error');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast('Erreur lors de la suppression', 'error');
+    } finally {
+      deleting = false;
+      showDeleteConfirm = false;
+    }
+  }
+
+  let showExportMenu = false;
+
+  function exportConversation(format: ExportFormat) {
+    if (!selectedThread) return;
+    exportService.exportConversation($messagesStore, selectedThread, format);
+    showExportMenu = false;
+    toast(`Conversation exportee en ${format.toUpperCase()}`, 'success');
+  }
+
   $: displayName = selectedThread?.contactName || (selectedThread ? formatPhoneNumber(selectedThread.address) : '');
 </script>
 
@@ -93,6 +187,22 @@
       <h2 class="font-semibold">Conversations</h2>
       <!-- Layout controls -->
       <div class="flex items-center gap-1">
+        <button
+          on:click={toggleSound}
+          class="p-1.5 rounded hover:bg-black/10 transition-colors"
+          title={soundEnabled ? 'Desactiver le son' : 'Activer le son'}
+        >
+          {#if soundEnabled}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          {:else}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          {/if}
+        </button>
         <button
           on:click={() => modernThemeStore.toggle()}
           class="p-1.5 rounded hover:bg-black/10 transition-colors"
@@ -105,6 +215,21 @@
           {:else}
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          {/if}
+        </button>
+        <button
+          on:click={() => compactModeStore.toggle()}
+          class="p-1.5 rounded hover:bg-black/10 transition-colors"
+          title={$compactModeStore ? 'Mode compact active' : 'Mode normal'}
+        >
+          {#if $compactModeStore}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          {:else}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           {/if}
         </button>
@@ -129,27 +254,30 @@
         {#each $threadsStore as thread (thread.threadId)}
           <button
             on:click={() => selectThread(thread)}
-            class="contact-item w-full text-left flex items-center p-4 border-b transition-colors
-                   {selectedThread?.threadId === thread.threadId ? 'active' : ''}"
+            class="contact-item w-full text-left flex items-center border-b transition-colors
+                   {selectedThread?.threadId === thread.threadId ? 'active' : ''}
+                   {$compactModeStore ? 'py-2 px-3' : 'p-4'}"
           >
             <div
-              class="avatar w-11 h-11 rounded-full flex items-center justify-center text-white font-medium mr-3 flex-shrink-0"
+              class="avatar rounded-full flex items-center justify-center text-white font-medium mr-3 flex-shrink-0 {$compactModeStore ? 'w-8 h-8 text-sm' : 'w-11 h-11'}"
               style="background-color: {getAvatarColor(thread.contactName || thread.address)}"
             >
               {(thread.contactName || thread.address).charAt(0).toUpperCase()}
             </div>
             <div class="contact-info flex-1 min-w-0">
               <div class="flex justify-between items-center">
-                <span class="name font-semibold text-sm truncate">
+                <span class="name font-semibold {$compactModeStore ? 'text-xs' : 'text-sm'} truncate">
                   {thread.contactName || formatPhoneNumber(thread.address)}
                 </span>
                 <span class="date text-xs opacity-60 ml-2 flex-shrink-0">
                   {formatRelativeTime(thread.lastDate)}
                 </span>
               </div>
-              <p class="text-sm opacity-70 truncate mt-0.5">
-                {truncate(thread.lastMessage, 35)}
-              </p>
+              {#if !$compactModeStore}
+                <p class="text-sm opacity-70 truncate mt-0.5">
+                  {truncate(thread.lastMessage, 35)}
+                </p>
+              {/if}
             </div>
             {#if thread.unreadCount > 0}
               <span class="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
@@ -177,6 +305,24 @@
           <h2 class="font-semibold">{displayName}</h2>
         </div>
         <div class="header-tools flex items-center gap-2 opacity-70">
+          <button
+            on:click={copyNumber}
+            class="p-2 hover:opacity-100 transition-opacity rounded-full hover:bg-blue-500/20"
+            title="Copier le numero"
+          >
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+          <button
+            on:click={callNumber}
+            class="call-btn p-2 hover:opacity-100 transition-opacity rounded-full hover:bg-green-500/20"
+            title="Appeler {displayName}"
+          >
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+          </button>
           <button class="p-2 hover:opacity-100 transition-opacity" title="Rechercher">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -187,9 +333,57 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
-          <button class="p-2 hover:opacity-100 transition-opacity" title="Options">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+          <!-- Export dropdown -->
+          <div class="relative">
+            <button
+              on:click={() => showExportMenu = !showExportMenu}
+              class="p-2 hover:opacity-100 transition-opacity"
+              title="Exporter"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            {#if showExportMenu}
+              <div class="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                <button
+                  on:click={() => exportConversation('txt')}
+                  class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Texte (.txt)
+                </button>
+                <button
+                  on:click={() => exportConversation('csv')}
+                  class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Excel (.csv)
+                </button>
+                <button
+                  on:click={() => exportConversation('json')}
+                  class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  JSON
+                </button>
+              </div>
+            {/if}
+          </div>
+          <!-- Delete button -->
+          <button
+            on:click={() => showDeleteConfirm = true}
+            class="p-2 hover:opacity-100 transition-opacity rounded-full hover:bg-red-500/20"
+            title="Supprimer la conversation"
+          >
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
         </div>
@@ -257,19 +451,19 @@
           </button>
         </div>
         <div class="toolbar flex justify-between items-center mt-3 text-sm opacity-60">
-          <div class="flex gap-3">
-            <button class="hover:opacity-100">
+          <div class="flex gap-3 items-center">
+            <TemplateSelector on:select={handleTemplateSelect} />
+            <button class="hover:opacity-100" title="Camera">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
-            <button class="hover:opacity-100">
+            <button class="hover:opacity-100" title="Emoji">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-            <span class="font-medium">GIF</span>
           </div>
           <div class="flex items-center gap-2">
             <span>{replyMessage.length}</span>
@@ -291,6 +485,39 @@
     {/if}
   </main>
 </div>
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteConfirm}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" on:click={() => showDeleteConfirm = false}>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4 shadow-xl" on:click|stopPropagation>
+      <h3 class="text-lg font-semibold mb-2">Supprimer la conversation ?</h3>
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        Cette action supprimera tous les messages de cette conversation. Cette action est irreversible.
+      </p>
+      <div class="flex gap-3 justify-end">
+        <button
+          on:click={() => showDeleteConfirm = false}
+          disabled={deleting}
+          class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+        >
+          Annuler
+        </button>
+        <button
+          on:click={deleteConversation}
+          disabled={deleting}
+          class="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {#if deleting}
+            <div class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+            Suppression...
+          {:else}
+            Supprimer
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   /* Theme Light (Christiano style) */

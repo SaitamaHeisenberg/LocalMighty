@@ -6,6 +6,7 @@ export type ModernTheme = 'light' | 'dark-blue';
 
 const LAYOUT_KEY = 'localmighty_chat_layout';
 const THEME_KEY = 'localmighty_chat_theme';
+const COMPACT_KEY = 'localmighty_compact_mode';
 
 function createChatLayoutStore() {
   const storedLayout = browser ? (localStorage.getItem(LAYOUT_KEY) as ChatLayout) : null;
@@ -57,5 +58,30 @@ function createModernThemeStore() {
   };
 }
 
+function createCompactModeStore() {
+  const storedCompact = browser ? localStorage.getItem(COMPACT_KEY) === 'true' : false;
+
+  const { subscribe, set } = writable<boolean>(storedCompact);
+
+  return {
+    subscribe,
+    set: (compact: boolean) => {
+      if (browser) {
+        localStorage.setItem(COMPACT_KEY, compact.toString());
+      }
+      set(compact);
+    },
+    toggle: () => {
+      const current = browser ? localStorage.getItem(COMPACT_KEY) === 'true' : false;
+      const newCompact = !current;
+      if (browser) {
+        localStorage.setItem(COMPACT_KEY, newCompact.toString());
+      }
+      set(newCompact);
+    },
+  };
+}
+
 export const chatLayoutStore = createChatLayoutStore();
 export const modernThemeStore = createModernThemeStore();
+export const compactModeStore = createCompactModeStore();

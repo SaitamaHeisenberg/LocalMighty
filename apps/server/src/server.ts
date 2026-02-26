@@ -12,7 +12,9 @@ import notificationsRouter from './routes/notifications.js';
 import authRouter from './routes/auth.js';
 import contactsRouter from './routes/contacts.js';
 import callsRouter from './routes/calls.js';
+import hubRouter from './routes/hub.js';
 import { authMiddleware } from './middleware/auth.js';
+import { setupHubHandlers } from './socket/handlers/hub.js';
 import { startMdnsAdvertisement } from './services/mdns.js';
 import { getLocalIpAddress } from './utils/network.js';
 
@@ -48,6 +50,7 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/calls', callsRouter);
+app.use('/api/hub', hubRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -67,6 +70,10 @@ app.get('/api/info', (_req, res) => {
 
 // Socket.io
 setupSocketHandlers(io);
+
+// Hub - Share namespace (independent from phone sync)
+const shareNs = io.of('/share');
+setupHubHandlers(shareNs);
 
 // Load SvelteKit handler
 async function loadSvelteKitHandler() {

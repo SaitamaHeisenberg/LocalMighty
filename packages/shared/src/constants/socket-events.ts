@@ -36,6 +36,11 @@ export const SOCKET_EVENTS = {
 
   // Web -> Server
   JOIN: 'join',
+
+  // Hub - Share namespace (/share)
+  HUB_TEXT_UPDATE: 'hub:text:update',
+  HUB_TEXT_REQUEST: 'hub:text:request',
+  HUB_TEXT_SYNC: 'hub:text:sync',
 } as const;
 
 export type SocketEvent = typeof SOCKET_EVENTS[keyof typeof SOCKET_EVENTS];

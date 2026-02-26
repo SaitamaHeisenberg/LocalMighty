@@ -1,6 +1,7 @@
 <script lang="ts">
   import { socketStore } from '$lib/stores/socket';
   import { phoneStatusStore } from '$lib/stores/status';
+  import TemplateSelector from './TemplateSelector.svelte';
 
   export let threadId: string;
   export let address: string;
@@ -45,6 +46,11 @@
       textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     }
   }
+
+  function handleTemplateSelect(e: CustomEvent<string>) {
+    message = e.detail;
+    autoResize();
+  }
 </script>
 
 <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -54,6 +60,7 @@
     </div>
   {:else}
     <div class="flex gap-2 items-end">
+      <TemplateSelector on:select={handleTemplateSelect} />
       <textarea
         bind:this={textarea}
         bind:value={message}

@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
+import { notificationSound } from './notificationSound';
 
 export type NotificationType = 'sms' | 'app' | 'call';
 
@@ -67,6 +68,9 @@ class DesktopNotificationService {
     }
 
     try {
+      // Play notification sound
+      notificationSound.play();
+
       const notification = new Notification(options.title, {
         body: options.body,
         icon: options.icon || '/favicon.png',

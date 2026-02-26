@@ -3,6 +3,7 @@ import { socketStore } from './socket';
 import { browser } from '$app/environment';
 import { apiUrl } from '$lib/api';
 import { desktopNotifications } from '$lib/services/desktopNotifications';
+import { offlineCache } from '$lib/services/offlineCache';
 
 export interface SmsMessage {
   id: string;
@@ -47,14 +48,25 @@ function createMessagesStore() {
     loadThreadMessages: async (threadId: string): Promise<SmsMessage[]> => {
       if (!browser) return [];
 
+      // Try cache first for instant display
+      const cached = offlineCache.getMessages(threadId);
+      if (cached && cached.length > 0) {
+        set(cached);
+      }
+
       try {
         const res = await fetch(apiUrl(`/api/messages/thread/${threadId}`));
         if (!res.ok) throw new Error('Failed to load messages');
         const messages = await res.json();
         set(messages);
+        offlineCache.saveMessages(threadId, messages);
         return messages;
       } catch (error) {
         console.error('Failed to load thread messages:', error);
+        // Return cached data if available
+        if (cached && cached.length > 0) {
+          return cached;
+        }
         return [];
       }
     },
@@ -72,14 +84,25 @@ function createThreadsStore() {
     load: async (): Promise<SmsThread[]> => {
       if (!browser) return [];
 
+      // Try cache first for instant display
+      const cached = offlineCache.getThreads();
+      if (cached && cached.length > 0) {
+        set(cached);
+      }
+
       try {
         const res = await fetch(apiUrl('/api/messages/threads'));
         if (!res.ok) throw new Error('Failed to load threads');
         const threads = await res.json();
         set(threads);
+        offlineCache.saveThreads(threads);
         return threads;
       } catch (error) {
         console.error('Failed to load threads:', error);
+        // Return cached data if available
+        if (cached && cached.length > 0) {
+          return cached;
+        }
         return [];
       }
     },
@@ -102,6 +125,37 @@ function createThreadsStore() {
         }
         return threads;
       });
+    },
+    deleteThread: async (threadId: string): Promise<boolean> => {
+      console.log('[STORE] deleteThread called with:', threadId);
+      if (!browser) {
+        console.log('[STORE] Not in browser, returning false');
+        return false;
+      }
+
+      try {
+        const url = apiUrl(`/api/messages/thread/${threadId}`);
+        console.log('[STORE] Fetching DELETE:', url);
+        const res = await fetch(url, {
+          method: 'DELETE'
+        });
+        console.log('[STORE] Response status:', res.status, res.ok);
+        if (!res.ok) throw new Error('Failed to delete thread');
+
+        // Remove from local store
+        console.log('[STORE] Updating store...');
+        update((threads) => threads.filter((t) => t.threadId !== threadId));
+
+        // Clear from cache
+        console.log('[STORE] Clearing cache...');
+        offlineCache.clearThread(threadId);
+
+        console.log('[STORE] Delete successful, returning true');
+        return true;
+      } catch (error) {
+        console.error('[STORE] Delete failed:', error);
+        return false;
+      }
     },
   };
 }
@@ -167,6 +221,9 @@ if (browser) {
         console.log('New SMS received:', message.address);
         messagesStore.addMessage(message);
         threadsStore.updateThread(message.threadId, message.body, message.date, message.address);
+
+        // Cache the new message
+        offlineCache.addMessage(message);
 
         // Show desktop notification for incoming messages
         if (message.type === 'inbox') {

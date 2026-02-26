@@ -1,12 +1,23 @@
 <script lang="ts">
   import { threadsStore, searchStore, type SmsThread, type SearchResult } from '$lib/stores/messages';
+  import { compactModeStore } from '$lib/stores/chatLayout';
   import { formatRelativeTime, formatPhoneNumber, truncate } from '$lib/utils/formatters';
   import { onMount } from 'svelte';
+  import { notificationSound } from '$lib/services/notificationSound';
 
   let loading = true;
   let searchQuery = '';
   let searching = false;
   let showResults = false;
+  let soundEnabled = notificationSound.isEnabled();
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    notificationSound.setEnabled(soundEnabled);
+    if (soundEnabled) {
+      notificationSound.play();
+    }
+  }
 
   onMount(async () => {
     await threadsStore.load();
@@ -42,15 +53,48 @@
   <div class="p-4 border-b border-gray-200 dark:border-gray-800">
     <div class="flex justify-between items-center mb-3">
       <h2 class="text-lg font-semibold">Messages</h2>
-      <a
-        href="/sms/new"
-        class="flex items-center gap-1 px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Nouveau
-      </a>
+      <div class="flex items-center gap-2">
+        <button
+          on:click={toggleSound}
+          class="p-2 rounded-lg transition-colors {soundEnabled ? 'text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+          title={soundEnabled ? 'Son active - cliquez pour desactiver' : 'Son desactive - cliquez pour activer'}
+        >
+          {#if soundEnabled}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          {:else}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          {/if}
+        </button>
+        <button
+          on:click={() => compactModeStore.toggle()}
+          class="p-2 rounded-lg transition-colors {$compactModeStore ? 'text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+          title={$compactModeStore ? 'Mode compact active' : 'Mode normal'}
+        >
+          {#if $compactModeStore}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          {:else}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          {/if}
+        </button>
+        <a
+          href="/sms/new"
+          class="flex items-center gap-1 px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Nouveau
+        </a>
+      </div>
     </div>
 
     <!-- Search Bar -->
@@ -146,27 +190,29 @@
       {#each $threadsStore as thread (thread.threadId)}
         <a
           href="/sms/{thread.threadId}"
-          class="block p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          class="block border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {$compactModeStore ? 'py-2 px-3' : 'p-4'}"
         >
-          <div class="flex justify-between items-start gap-3">
-            <div class="flex-shrink-0 w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-              <span class="text-primary-600 dark:text-primary-400 font-medium">
+          <div class="flex justify-between items-center gap-2">
+            <div class="flex-shrink-0 {$compactModeStore ? 'w-8 h-8' : 'w-10 h-10'} bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+              <span class="text-primary-600 dark:text-primary-400 {$compactModeStore ? 'text-sm' : ''} font-medium">
                 {(thread.contactName || thread.address).charAt(0).toUpperCase()}
               </span>
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex justify-between items-center">
-                <p class="font-medium text-gray-900 dark:text-white truncate">
+                <p class="{$compactModeStore ? 'text-sm' : ''} font-medium text-gray-900 dark:text-white truncate">
                   {thread.contactName || formatPhoneNumber(thread.address)}
                 </p>
                 <span class="text-xs text-gray-400 flex-shrink-0 ml-2">
                   {formatRelativeTime(thread.lastDate)}
                 </span>
               </div>
-              <p class="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                {truncate(thread.lastMessage, 50)}
-              </p>
+              {#if !$compactModeStore}
+                <p class="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                  {truncate(thread.lastMessage, 50)}
+                </p>
+              {/if}
             </div>
 
             {#if thread.unreadCount > 0}

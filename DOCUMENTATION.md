@@ -18,14 +18,15 @@
 
 ## Vue d'ensemble
 
-**LocalMighty** est une application de synchronisation SMS et notifications entre un telephone Android et un PC, fonctionnant exclusivement sur le reseau local (Wi-Fi).
+**LocalMighty** est une application de synchronisation SMS, appels et notifications entre un telephone Android et un PC, fonctionnant exclusivement sur le reseau local (Wi-Fi).
 
 ### Caracteristiques principales
 
 - Synchronisation SMS en temps reel (< 5 secondes)
-- Mirroring des notifications Android
-- Envoi de SMS depuis le PC
-- Gestion des contacts
+- Historique des appels avec appel depuis PC
+- Mirroring des notifications avec reponses directes
+- Gestion des contacts complete
+- Interface moderne avec themes et mode compact
 - 100% local, pas d'internet requis
 - Open source
 
@@ -33,10 +34,10 @@
 
 | Composant | Technologies |
 |-----------|--------------|
-| Android | Kotlin, Jetpack Compose, Socket.io-client |
-| Serveur | Node.js, Express, Socket.io, SQLite |
-| Web | SvelteKit, Tailwind CSS, Socket.io-client |
-| Partage | TypeScript (types communs) |
+| Android | Kotlin, Jetpack Compose, Socket.io-client 2.1.0 |
+| Serveur | Node.js, Express, Socket.io 4.7, SQLite (better-sqlite3) |
+| Web | SvelteKit 2.5, Tailwind CSS 3.4, Socket.io-client 4.7 |
+| Partage | TypeScript 5.3 (types + constantes) |
 
 ---
 
@@ -68,35 +69,35 @@ LocalMighty/
 ├── apps/
 │   ├── android/           # Application Android
 │   │   └── app/src/main/kotlin/com/localmighty/
-│   │       ├── network/           # Socket.io client
-│   │       ├── services/          # Foreground service, Notification listener
-│   │       ├── observers/         # SMS observer, Battery receiver
-│   │       ├── helpers/           # Contacts helper
-│   │       ├── utils/             # SMS reader, Permissions
-│   │       ├── data/              # Preferences DataStore
-│   │       └── ui/                # Compose UI
+│   │       ├── network/           # SocketManager (WebSocket client)
+│   │       ├── services/          # ForegroundService, NotificationListener
+│   │       ├── observers/         # SmsContentObserver, BatteryReceiver
+│   │       ├── helpers/           # ContactsHelper
+│   │       ├── utils/             # SmsReader, CallLogReader, PermissionHelper
+│   │       ├── data/              # AppPreferences (DataStore)
+│   │       └── ui/                # MainScreen (Compose)
 │   │
 │   ├── server/            # Backend Node.js
 │   │   └── src/
-│   │       ├── config/            # Database SQLite
-│   │       ├── routes/            # REST endpoints
-│   │       ├── socket/            # WebSocket handlers
-│   │       ├── middleware/        # Auth middleware
-│   │       └── services/          # mDNS discovery
+│   │       ├── config/            # database.ts (SQLite schema)
+│   │       ├── routes/            # auth, messages, contacts, calls, notifications
+│   │       ├── socket/handlers/   # sms, notification, status, contacts, calls
+│   │       ├── middleware/        # auth.ts (token validation)
+│   │       └── services/          # mdns.ts (Bonjour discovery)
 │   │
 │   └── web/               # Dashboard SvelteKit
 │       └── src/
-│           ├── routes/            # Pages Svelte
-│           ├── lib/
-│           │   ├── stores/        # State management
-│           │   ├── components/    # UI components
-│           │   └── utils/         # Helpers
+│           ├── routes/            # Pages (/, /sms, /calls, /contacts, /notifications, /settings)
+│           ├── lib/stores/        # socket, messages, contacts, calls, notifications, theme, chatLayout
+│           ├── lib/components/    # sms/, layout/, notifications/, ui/
+│           ├── lib/services/      # desktopNotifications, smsTemplates, offlineCache
+│           └── lib/utils/         # formatters
 │
 └── packages/
     └── shared/            # Types TypeScript partages
         └── src/
-            ├── types/             # Interfaces
-            └── constants/         # Socket events
+            ├── types/             # sms, call, notification, status, events
+            └── constants/         # socket-events.ts (29 events)
 ```
 
 ---
@@ -107,45 +108,58 @@ LocalMighty/
 
 | Fonctionnalite | Status | Description |
 |----------------|--------|-------------|
-| Connexion Socket.io | ✅ | Connexion WebSocket avec reconnexion auto |
-| Sync SMS | ✅ | Envoi des SMS au serveur (batch + temps reel) |
-| Envoi SMS | ✅ | Reception des commandes d'envoi depuis PC |
-| Suivi livraison | ✅ | Confirmation sent/delivered/failed |
-| Sync contacts | ✅ | Envoi de la liste des contacts |
-| Notifications | ✅ | Capture et envoi des notifications |
-| Batterie | ✅ | Envoi du niveau et etat de charge |
-| Service foreground | ✅ | Survit en arriere-plan |
-| UI reconnexion | ✅ | Indicateur anime + tentatives |
-| Permissions | ✅ | Gestion des permissions Android |
+| Connexion Socket.io | ✅ | WebSocket avec reconnexion auto (backoff exponentiel) |
+| Sync SMS | ✅ | Batch initial + temps reel via ContentObserver |
+| Envoi SMS | ✅ | Reception des commandes, suivi sent/delivered/failed |
+| Sync contacts | ✅ | Liste complete avec numeros normalises |
+| Sync appels | ✅ | Historique complet (incoming/outgoing/missed/rejected/voicemail) |
+| Appel depuis PC | ✅ | Ouverture du dialer Android |
+| Notifications | ✅ | Capture via NotificationListenerService |
+| Reponse notifs | ✅ | RemoteInput pour repondre directement |
+| Batterie | ✅ | Niveau + etat de charge (heartbeat 30s) |
+| Service foreground | ✅ | WakeLock + notification persistante |
+| UI reconnexion | ✅ | Animation + compteur tentatives |
+| Gestion permissions | ✅ | UI pour autoriser toutes les permissions |
+| HyperOS/Xiaomi | ✅ | Guide autostart + batterie |
 
 ### Serveur Node.js
 
 | Fonctionnalite | Status | Description |
 |----------------|--------|-------------|
-| API REST | ✅ | Endpoints pour SMS, contacts, notifications |
-| Socket.io | ✅ | Communication temps reel bidirectionnelle |
-| SQLite | ✅ | Persistance des donnees |
-| mDNS | ✅ | Decouverte automatique sur le reseau |
-| Auth token | ✅ | Pairing avec token UUID |
-| Threads SMS | ✅ | Groupement par conversation |
-| Recherche | ✅ | Recherche dans les SMS et contacts |
-| Stats | ✅ | Compteurs et statistiques |
+| REST API | ✅ | 5 groupes de routes (auth, messages, contacts, calls, notifications) |
+| Socket.io | ✅ | Rooms (phone, web-clients), relay bidirectionnel |
+| SQLite WAL | ✅ | 7 tables avec index optimises |
+| mDNS | ✅ | Bonjour advertisement `_localmighty._tcp` |
+| Auth token | ✅ | Pairing UUID + validation + last_used |
+| Threads SMS | ✅ | Groupement par conversation + unread count |
+| Recherche | ✅ | Full-text sur SMS (body, contact name) |
+| Stats | ✅ | Compteurs messages, appels, contacts |
+| Suppression | ✅ | DELETE thread avec cascade messages |
+| Serve Web | ✅ | SvelteKit build servi depuis /web-build |
 
 ### Dashboard Web
 
 | Fonctionnalite | Status | Description |
 |----------------|--------|-------------|
-| Liste conversations | ✅ | Affichage des threads SMS |
-| Detail conversation | ✅ | Historique des messages |
-| Envoi SMS | ✅ | Composition et envoi |
-| Liste contacts | ✅ | Avec recherche intelligente |
-| Notifications | ✅ | Liste avec filtrage par app |
-| Status batterie | ✅ | Niveau + indicateur charge |
-| Status connexion | ✅ | Serveur + telephone |
-| Cache contacts | ✅ | LocalStorage 24h |
-| Toast notifications | ✅ | Feedback utilisateur |
-| Mode sombre | ✅ | Theme Tailwind |
+| Dashboard | ✅ | Vue d'ensemble avec stats et status |
+| Conversations | ✅ | Liste threads + detail messages |
+| Layout moderne | ✅ | Chat bubbles style messaging app |
+| Layout classique | ✅ | Vue liste traditionnelle |
+| Mode compact | ✅ | Espacement reduit pour plus de contenu |
+| Envoi SMS | ✅ | Composition + templates rapides |
+| Envoi en masse | ✅ | Bulk SMS a plusieurs destinataires |
+| Statut livraison | ✅ | Indicateurs sending/sent/delivered/failed |
+| Historique appels | ✅ | Liste filtrable par type |
+| Appel depuis PC | ✅ | Bouton dial → ouvre dialer Android |
+| Contacts | ✅ | Liste + recherche intelligente multi-mots |
+| Notifications | ✅ | Liste par app + dismiss |
+| Batterie | ✅ | Niveau + indicateur charge |
+| Status connexion | ✅ | Serveur + telephone en temps reel |
+| Cache contacts | ✅ | LocalStorage 24h + refresh background |
+| Notifications desktop | ✅ | Browser notifications API |
+| Theme sombre | ✅ | Light/Dark/System |
 | Recherche globale | ✅ | Dans tous les SMS |
+| Suppression conv | ✅ | Delete thread depuis UI |
 
 ---
 
@@ -155,20 +169,17 @@ LocalMighty/
 
 | Fonctionnalite | Effort | Description |
 |----------------|--------|-------------|
+| Multi-utilisateurs | Eleve | Authentification JWT, isolation donnees |
 | Validation input | Moyen | Securiser les entrees API |
 | Rate limiting | Faible | Proteger contre le spam |
-| Logs serveur | Faible | Journalisation des requetes |
-| Gestion erreurs | Moyen | Messages utilisateur clairs |
-| Page parametres | Moyen | Configuration dans l'UI |
 
 ### Moyenne priorite
 
 | Fonctionnalite | Effort | Description |
 |----------------|--------|-------------|
-| Export donnees | Moyen | Backup des SMS/contacts |
+| Export donnees | Moyen | Backup SMS/contacts en JSON/CSV |
 | Photos contacts | Moyen | Avatars dans l'UI |
-| Notifications push | Moyen | Alertes navigateur |
-| Mode hors-ligne | Eleve | Queue des messages |
+| Mode hors-ligne | Eleve | Queue des messages, IndexedDB |
 | Multi-langue | Moyen | i18n francais/anglais |
 
 ### Basse priorite
@@ -176,9 +187,7 @@ LocalMighty/
 | Fonctionnalite | Effort | Description |
 |----------------|--------|-------------|
 | Chiffrement E2E | Eleve | Securite des messages |
-| Historique appels | Eleve | Sync des appels |
 | MMS/Images | Eleve | Pieces jointes |
-| Reponses rapides | Faible | Templates de messages |
 | Reactions | Moyen | Emojis sur messages |
 
 ---
@@ -190,7 +199,7 @@ LocalMighty/
 - Node.js 18+
 - pnpm 8+
 - Android Studio (pour l'APK)
-- Android 10+ sur le telephone
+- Android 8.0+ (API 26) sur le telephone
 
 ### Serveur + Dashboard
 
@@ -217,7 +226,7 @@ pnpm --filter @localmighty/web dev      # Web: http://localhost:5173
 powershell -NoProfile -ExecutionPolicy Bypass -File "apps/android/build_apk.ps1"
 
 # Installer sur telephone connecte
-powershell -NoProfile -Command "& 'C:\Users\AJB_ELITE\AppData\Local\Android\Sdk\platform-tools\adb.exe' install -r 'apps/android/app/build/outputs/apk/debug/app-debug.apk'"
+adb install -r "apps/android/app/build/outputs/apk/debug/app-debug.apk"
 ```
 
 ### Configuration Xiaomi/HyperOS
@@ -246,6 +255,17 @@ Dans l'application, saisir :
 - **Adresse IP** : IP locale du PC (ex: 192.168.1.100)
 - **Port** : 3001 (par defaut)
 
+### Deploiement Production
+
+```bash
+# Build + deploy sur serveur Proxmox/LXC
+pnpm --filter @localmighty/web build && \
+scp -r apps/web/build root@172.10.10.50:/opt/localmighty/apps/web/ && \
+ssh root@172.10.10.50 "rm -rf /opt/localmighty/apps/server/web-build && \
+cp -r /opt/localmighty/apps/web/build /opt/localmighty/apps/server/web-build && \
+pm2 restart all"
+```
+
 ---
 
 ## API Reference
@@ -263,7 +283,7 @@ Genere un token de pairing.
 { "token": "550e8400-e29b-41d4-a716-446655440000" }
 ```
 
-#### POST /api/auth/verify
+#### POST /api/auth/validate
 Verifie un token.
 
 ```json
@@ -273,6 +293,12 @@ Verifie un token.
 // Response
 { "valid": true, "deviceName": "Redmi Note 13 Pro" }
 ```
+
+#### DELETE /api/auth/revoke
+Revoque un token (Bearer token requis).
+
+#### GET /api/auth/devices
+Liste tous les appareils paires.
 
 ### Messages SMS
 
@@ -295,7 +321,7 @@ Liste des conversations.
 ```
 
 #### GET /api/messages/thread/:threadId
-Messages d'une conversation.
+Messages d'une conversation (pagine avec `before` et `limit`).
 
 ```json
 // Response
@@ -313,21 +339,23 @@ Messages d'une conversation.
 ```
 
 #### GET /api/messages/search?q=query
-Recherche dans les SMS.
+Recherche dans les SMS (min 2 caracteres).
 
 #### POST /api/messages/thread/:threadId/read
 Marque un thread comme lu.
 
+#### DELETE /api/messages/thread/:threadId
+Supprime une conversation et tous ses messages.
+
 #### GET /api/messages/stats
-Statistiques des messages.
+Statistiques (total, today, this_week).
 
 ### Contacts
 
 #### GET /api/contacts
-Liste des contacts.
+Liste des contacts avec numeros.
 
 ```json
-// Response
 [
   {
     "id": "1",
@@ -338,24 +366,57 @@ Liste des contacts.
 ```
 
 #### GET /api/contacts/search?q=query
-Recherche de contacts.
+Recherche de contacts (min 2 caracteres, limit 20).
 
 #### GET /api/contacts/by-phone/:phoneNumber
-Trouve un contact par numero.
+Trouve un contact par numero (match sur 9 derniers chiffres).
+
+#### GET /api/contacts/stats
+Statistiques (total contacts, total phones).
+
+### Appels
+
+#### GET /api/calls
+Liste des appels (pagine avec `offset` et `limit`).
+
+```json
+[
+  {
+    "id": "1",
+    "number": "+33612345678",
+    "contact_name": "John Doe",
+    "type": "incoming",
+    "date": 1708876800000,
+    "duration": 125
+  }
+]
+```
+
+#### GET /api/calls/type/:type
+Filtre par type (incoming, outgoing, missed, rejected, voicemail).
+
+#### GET /api/calls/stats
+Statistiques (total, par type, duree totale).
 
 ### Notifications
 
 #### GET /api/notifications
-Liste des notifications.
+Liste des notifications (query `dismissed` pour inclure dismissed).
 
 #### GET /api/notifications/apps
-Liste des apps avec notifications.
+Liste des apps avec nombre de notifications.
+
+#### GET /api/notifications/app/:packageName
+Notifications d'une app specifique.
 
 #### POST /api/notifications/:id/dismiss
 Rejette une notification.
 
 #### POST /api/notifications/dismiss-all
 Rejette toutes les notifications.
+
+#### DELETE /api/notifications/cleanup
+Supprime les notifications > 7 jours dismissees.
 
 ---
 
@@ -368,29 +429,47 @@ Rejette toutes les notifications.
 | `phone_connected` | `{deviceName, model, androidVersion}` | Telephone connecte |
 | `new_sms` | `SmsMessage` | Nouveau SMS recu |
 | `sms_batch` | `SmsMessage[]` | Batch de SMS |
-| `new_notification` | `AppNotification` | Nouvelle notification |
-| `battery_update` | `{level, isCharging}` | Mise a jour batterie |
-| `contacts_sync` | `Contact[]` | Sync des contacts |
 | `sms_sent` | `{messageId, address}` | SMS envoye |
 | `sms_delivered` | `{messageId, address}` | SMS livre |
 | `sms_failed` | `{messageId, address, error}` | SMS echoue |
+| `new_notif` | `AppNotification` | Nouvelle notification |
+| `notif_batch` | `AppNotification[]` | Batch notifications |
+| `notif_dismissed_phone` | `{id, packageName}` | Notification dismissed sur tel |
+| `battery_update` | `{batteryLevel, isCharging, wifiConnected, lastSeen}` | Status batterie |
+| `contacts_sync` | `Contact[]` | Sync des contacts |
+| `call_log_sync` | `CallLogEntry[]` | Sync historique appels |
+| `new_call` | `CallLogEntry` | Nouvel appel |
 
 ### Server → Phone
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `send_sms` | `{address, body}` | Demande d'envoi SMS |
-| `dismiss_notification` | `{id}` | Rejeter notification |
-| `request_sync` | - | Demande de sync |
+| `send_sms` | `{address, body, threadId?}` | Demande d'envoi SMS |
+| `send_bulk_sms` | `{addresses[], body}` | Envoi SMS en masse |
+| `dismiss_notif` | `{id, packageName}` | Rejeter notification |
+| `reply_notif` | `{notificationId, message}` | Repondre a notification |
+| `dial_number` | `{number}` | Appeler un numero |
+| `request_sync` | - | Demande de sync complete |
 
 ### Server → Web
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `phone_status` | `{connected, deviceName, ...}` | Status telephone |
+| `phone_status` | `{connected, info?}` | Status telephone |
+| `update_sms` | `SmsMessage` | Nouveau SMS a afficher |
 | `sms_sync_complete` | `{count}` | Sync SMS terminee |
-| `contacts_sync_complete` | `{count}` | Sync contacts terminee |
 | `sms_status_update` | `{messageId, status}` | Statut livraison |
+| `update_notifications` | `AppNotification` | Nouvelle notification |
+| `contacts_sync_complete` | `{count}` | Sync contacts terminee |
+| `status_update` | `DeviceStatus` | Status batterie |
+| `call_log_update` | `CallLogEntry` | Nouvel appel |
+| `call_log_sync_complete` | `{count}` | Sync appels terminee |
+
+### Web → Server
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `join` | `"web-clients"` | Rejoindre la room web |
 
 ---
 
@@ -408,6 +487,17 @@ CREATE TABLE messages (
   date INTEGER NOT NULL,
   type TEXT NOT NULL,  -- inbox, sent, draft, outbox
   read INTEGER DEFAULT 0,
+  synced_at INTEGER
+);
+
+-- Historique des appels
+CREATE TABLE calls (
+  id TEXT PRIMARY KEY,
+  number TEXT NOT NULL,
+  contact_name TEXT,
+  type TEXT NOT NULL,  -- incoming, outgoing, missed, rejected, voicemail
+  date INTEGER NOT NULL,
+  duration INTEGER DEFAULT 0,
   synced_at INTEGER
 );
 
@@ -462,6 +552,8 @@ CREATE TABLE contact_phones (
 CREATE INDEX idx_messages_thread ON messages(thread_id);
 CREATE INDEX idx_messages_date ON messages(date DESC);
 CREATE INDEX idx_messages_address ON messages(address);
+CREATE INDEX idx_calls_date ON calls(date DESC);
+CREATE INDEX idx_calls_number ON calls(number);
 CREATE INDEX idx_contact_phones_number ON contact_phones(phone_number);
 CREATE INDEX idx_notifications_timestamp ON notifications(timestamp DESC);
 CREATE INDEX idx_notifications_package ON notifications(package_name);
@@ -473,58 +565,59 @@ CREATE INDEX idx_notifications_package ON notifications(package_name);
 
 ### Mesures actuelles
 
-- Token UUID pour l'authentification
-- Communication locale uniquement (pas d'exposition internet)
-- Validation basique des payloads
+- Token UUID pour l'authentification (pas de password)
+- Communication locale uniquement
+- HTTP autorise uniquement sur IP privees (10.x, 172.16.x, 192.168.x)
+- Validation des payloads Socket.io
+- SQLite WAL mode pour la concurrence
 
-### Recommandations
+### Recommandations production
 
 | Mesure | Priorite | Status |
 |--------|----------|--------|
 | HTTPS/WSS | Haute | Non implemente |
 | Rate limiting | Haute | Non implemente |
+| JWT auth | Haute | Planifie (voir plan auth) |
 | Input validation | Haute | Partiel |
 | Logs d'audit | Moyenne | Non implemente |
 | Chiffrement DB | Basse | Non implemente |
 
-### Pour deploiement internet
-
-Si vous souhaitez exposer sur internet :
+### Pour exposition internet
 
 1. Utiliser HTTPS avec certificat Let's Encrypt
 2. Ajouter Nginx en reverse proxy
 3. Configurer fail2ban
 4. Activer rate limiting
-5. Utiliser des tokens JWT
+5. Utiliser des tokens JWT avec expiration
 6. Chiffrer les donnees sensibles
 
 ---
 
 ## Roadmap
 
-### v1.1 - Stabilite
-- [ ] Validation des inputs
-- [ ] Gestion d'erreurs amelioree
-- [ ] Page parametres
-- [ ] Logs serveur
+### v1.1 - Multi-utilisateurs (Planifie)
+- [ ] Authentification JWT (access + refresh tokens)
+- [ ] Pairing telephone avec code 6 chiffres
+- [ ] Isolation donnees par utilisateur
+- [ ] Pages login/register
 
-### v1.2 - UX
-- [ ] Notifications navigateur
+### v1.2 - Stabilite
+- [ ] Validation des inputs
+- [ ] Rate limiting
+- [ ] Logs serveur structures
+- [ ] Gestion d'erreurs amelioree
+
+### v1.3 - UX
+- [ ] Notifications navigateur ameliorees
 - [ ] Export/backup des donnees
 - [ ] Photos contacts
-- [ ] Themes personnalisables
-
-### v1.3 - Fonctionnalites
-- [ ] Mode hors-ligne avec queue
-- [ ] Historique des appels
-- [ ] Support MMS/images
 - [ ] Multi-langue (i18n)
 
-### v2.0 - Cloud (optionnel)
-- [ ] Deploiement VPS
-- [ ] Multi-utilisateurs
+### v2.0 - Avance
+- [ ] Mode hors-ligne avec queue
+- [ ] Support MMS/images
 - [ ] Chiffrement E2E
-- [ ] Applications mobiles natives
+- [ ] App desktop (Electron)
 
 ---
 
